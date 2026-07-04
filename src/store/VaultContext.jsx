@@ -7,15 +7,30 @@ import {
 } from 'firebase/firestore'
 import { nanoid } from 'nanoid'
 import { vaultRef, firebaseConfigured } from '../lib/firebase'
+import { episodeKey, totalEpisodes } from '../lib/progress'
+import { dateKey } from '../lib/schedule'
 
 const VaultContext = createContext(null)
 
-export function episodeKey(season, episode) {
-  return `S${season}E${episode}`
-}
-
 function withUpdatedAt(id, extra = {}) {
   return { [`series.${id}.updatedAt`]: Date.now(), ...extra }
+}
+
+// Marking an episode watched can trigger an automatic status change:
+// - if the series is still "planned" (Da vedere), watching its first
+//   episode bumps it to "watching" (In corso).
+// - if this toggle brings the watched count to the full total, the series
+//   is marked "completed" (Completata) automatically. Un-watching an
+//   episode never reverts an already-completed series (no auto-revert).
+function autoStatusUpdates(series, id, newWatched) {
+  const total = totalEpisodes(series)
+  if (total > 0 && Object.keys(newWatched).length >= total) {
+    return { [`series.${id}.status`]: 'completed' }
+  }
+  if (series.status === 'planned') {
+    return { [`series.${id}.status`]: 'watching' }
+  }
+  return {}
 }
 
 export function VaultProvider({ children }) {
@@ -86,30 +101,56 @@ export function VaultProvider({ children }) {
     await updateDoc(vaultRef, withUpdatedAt(id, { [`series.${id}.watchDays`]: days }))
   }
 
-  // Marking any episode watched while a series is still "planned" (Da vedere)
-  // means you've started it — bump it to "watching" (In corso) automatically.
-  function autoStartUpdates(id, watched) {
-    return watched && seriesMap?.[id]?.status === 'planned'
-      ? { [`series.${id}.status`]: 'watching' }
-      : {}
-  }
-
-  async function toggleEpisode(id, season, episode, watched) {
-    const path = `series.${id}.watched.${episodeKey(season, episode)}`
+  async function setRating(id, rating) {
     await updateDoc(
       vaultRef,
-      withUpdatedAt(id, { [path]: watched ? true : deleteField(), ...autoStartUpdates(id, watched) }),
+      withUpdatedAt(id, { [`series.${id}.rating`]: rating == null ? deleteField() : rating }),
+    )
+  }
+
+  // Watched episodes store the real date they were marked watched (not just
+  // `true`) so the Calendario page can show genuine history. Un-marking
+  // always deletes the field regardless.
+  async function toggleEpisode(id, season, episode, watched) {
+    const current = seriesMap?.[id]
+    const key = episodeKey(season, episode)
+    const path = `series.${id}.watched.${key}`
+    const today = dateKey(new Date())
+    const newWatched = { ...(current?.watched ?? {}) }
+    if (watched) newWatched[key] = today
+    else delete newWatched[key]
+    const statusUpdates = current ? autoStatusUpdates(current, id, newWatched) : {}
+    await updateDoc(
+      vaultRef,
+      withUpdatedAt(id, { [path]: watched ? today : deleteField(), ...statusUpdates }),
     )
   }
 
   async function setSeasonWatched(id, season, episodeCount, watched) {
-    const updates = withUpdatedAt(id, autoStartUpdates(id, watched))
+    const current = seriesMap?.[id]
+    const today = dateKey(new Date())
+    const newWatched = { ...(current?.watched ?? {}) }
+    for (let ep = 1; ep <= episodeCount; ep++) {
+      const key = episodeKey(season, ep)
+      if (watched) newWatched[key] = today
+      else delete newWatched[key]
+    }
+    const statusUpdates = current ? autoStatusUpdates(current, id, newWatched) : {}
+    const updates = withUpdatedAt(id, statusUpdates)
     for (let ep = 1; ep <= episodeCount; ep++) {
       updates[`series.${id}.watched.${episodeKey(season, ep)}`] = watched
-        ? true
+        ? today
         : deleteField()
     }
     await updateDoc(vaultRef, updates)
+  }
+
+  // Lets the Calendario page correct when an already-watched episode was
+  // actually watched (e.g. logged a day late). Only meaningful for episodes
+  // already marked watched; does not toggle watched state itself.
+  async function setEpisodeWatchedDate(id, season, episode, newDateKey) {
+    const path = `series.${id}.watched.${episodeKey(season, episode)}`
+    await updateDoc(vaultRef, withUpdatedAt(id, { [path]: newDateKey }))
   }
 
   const value = {
@@ -122,8 +163,10 @@ export function VaultProvider({ children }) {
     setStatus,
     setLink,
     setWatchDays,
+    setRating,
     toggleEpisode,
     setSeasonWatched,
+    setEpisodeWatchedDate,
   }
 
   return <VaultContext.Provider value={value}>{children}</VaultContext.Provider>

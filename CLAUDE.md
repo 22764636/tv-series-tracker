@@ -76,15 +76,30 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
-- **Calendario** (`src/pages/Calendar.jsx` + `src/lib/schedule.js`): ogni
-  serie ha un campo opzionale `watchDays` (giorni della settimana in cui si
-  prevede di guardarla). Le date mostrate in calendario **non sono mai
-  salvate**: si ricalcolano ad ogni apertura della pagina da oggi +
-  `watchDays` + numero di episodi non ancora visti rimanenti. Questo è
-  intenzionale: se si salta un giorno di visione previsto, la serie non
-  sparisce dal calendario, semplicemente lo slot si sposta in avanti (il
-  conteggio dipende dagli episodi rimasti, non da una data fissa). Non
-  persistere le occorrenze calcolate né introdurre uno stato "saltato".
+- **Calendario** (`src/pages/Calendar.jsx` + `src/lib/schedule.js`), griglia
+  mensile (lun-dom, navigazione libera avanti/indietro):
+  - Ogni serie ha un campo opzionale `watchDays` (giorni della settimana in
+    cui si prevede di guardarla).
+  - **Futuro** (da domani in poi): le date mostrate **non sono mai
+    salvate**, si ricalcolano ad ogni apertura della pagina da oggi +
+    `watchDays` + numero di episodi non ancora visti rimanenti
+    (`upcomingCalendarEntries`). Intenzionale: se si salta un giorno di
+    visione previsto, la serie non sparisce dal calendario, lo slot si
+    sposta semplicemente in avanti (il conteggio dipende dagli episodi
+    rimasti, non da una data fissa). Non persistere le occorrenze calcolate
+    né introdurre uno stato "saltato".
+  - **Passato/oggi**: mostra la cronologia reale di cosa è stato visto,
+    presa dalla data effettiva salvata per ogni episodio (vedi sotto), non
+    dal piano `watchDays`. La data di un episodio già visto è modificabile
+    direttamente dal Calendario (non dalla pagina serie, che resta un
+    semplice toggle segna/non-segna visto).
+- **`series.watched[SxEy]` è una data (`YYYY-MM-DD`), non `true`**: il
+  giorno reale in cui l'episodio è stato segnato visto (vedi `dateKey` in
+  `src/lib/schedule.js` — usa i componenti locali della data, MAI
+  `toISOString()`, che converte a UTC e sfalsa il giorno vicino alla
+  mezzanotte per chi non è in UTC). Tutto il codice che verifica se un
+  episodio è visto deve continuare a controllare la sola verità del valore
+  (`Boolean(watched[key])`), mai assumere che sia booleano.
 
 ## Stile — palette e principi
 
@@ -154,8 +169,16 @@ dal codice reale è peggio che non averla.
   minimo e coerente con quanto discusso.
 - Prima di un deploy reale, verificare che `npm run build` passi e che le
   env var richieste siano documentate in `README.md`.
-- **Lo stato "Completata" non deve mai essere impostato automaticamente**,
-  nemmeno quando tutti gli episodi risultano visti: resta un'azione manuale
-  esplicita (il bottone si abilita al 100% ma va comunque cliccato). Non
-  aggiungere logica che lo imposti da sola in `toggleEpisode`/
-  `setSeasonWatched` o altrove.
+- **Lo stato "Completata" viene impostato automaticamente** non appena
+  l'ultimo episodio rimasto viene segnato visto (vedi `autoStatusUpdates` in
+  `VaultContext.jsx`, usato sia da `toggleEpisode` che da
+  `setSeasonWatched`). Non c'è invece auto-revert: se dopo il completamento
+  si smarca un episodio, lo stato resta "Completata" finché non viene
+  cambiato manualmente. Nota storica: una versione precedente di questa
+  regola diceva l'opposto (mai automatico) — quella era un'incomprensione,
+  corretta esplicitamente dall'utente; questa è la versione valida.
+- **La valutazione (`rating`, 1–10 con mezzi punti)** è visibile/modificabile
+  **solo** quando lo stato della serie è "Completata" (vedi `RatingRow` in
+  `SeriesDetail.jsx`): il controllo non viene proprio renderizzato per le
+  altre serie. Il valore non viene cancellato se lo stato cambia
+  successivamente (stesso comportamento non distruttivo del link).

@@ -1,15 +1,23 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useVault, episodeKey } from '../store/VaultContext'
+import { useVault } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
-import { progressRatio, totalEpisodes, watchedCount, STATUS_META } from '../lib/progress'
+import { progressRatio, totalEpisodes, watchedCount, episodeKey, STATUS_META } from '../lib/progress'
 import { WEEKDAYS } from '../lib/schedule'
 
 export default function SeriesDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getSeries, setStatus, setLink, setWatchDays, toggleEpisode, setSeasonWatched, removeSeries } =
-    useVault()
+  const {
+    getSeries,
+    setStatus,
+    setLink,
+    setWatchDays,
+    setRating,
+    toggleEpisode,
+    setSeasonWatched,
+    removeSeries,
+  } = useVault()
   const series = getSeries(id)
 
   if (!series) {
@@ -89,6 +97,8 @@ export default function SeriesDetail() {
             locked={locked}
             onSetWatchDays={(days) => setWatchDays(series.id, days)}
           />
+
+          <RatingRow series={series} onSetRating={(rating) => setRating(series.id, rating)} />
 
           <button
             onClick={handleDelete}
@@ -226,6 +236,78 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
         })}
       </div>
     </div>
+  )
+}
+
+function RatingRow({ series, onSetRating }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(series.rating ?? '')
+
+  if (series.status !== 'completed') return null
+
+  async function save(e) {
+    e.preventDefault()
+    if (value === '') {
+      await onSetRating(null)
+    } else {
+      const clamped = Math.min(10, Math.max(1, Math.round(Number(value) * 2) / 2))
+      await onSetRating(clamped)
+    }
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={save} className="flex items-center gap-2">
+        <input
+          autoFocus
+          type="number"
+          min="1"
+          max="10"
+          step="0.5"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="1-10"
+          className="w-20 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+        />
+        <button type="submit" className="text-xs font-medium text-accent hover:underline">
+          Salva
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="text-xs text-muted hover:text-text"
+        >
+          Annulla
+        </button>
+      </form>
+    )
+  }
+
+  if (series.rating != null) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-text">Valutazione: {series.rating}/10</span>
+        <button
+          onClick={() => {
+            setValue(series.rating)
+            setEditing(true)
+          }}
+          className="text-xs text-muted hover:text-text"
+        >
+          Modifica
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="self-start text-sm text-accent hover:underline"
+    >
+      + Aggiungi valutazione
+    </button>
   )
 }
 

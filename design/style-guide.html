@@ -195,13 +195,28 @@
 <h2>Form inputs</h2>
 <p class="lede">Used in AddSeriesModal search/manual forms: <code class="class">rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent</code>.</p>
 
-<h2>Calendario (agenda entries)</h2>
+<h2>Rating (SeriesDetail + card)</h2>
 <p class="lede">
-  <code class="class">src/pages/Calendar.jsx</code> — date group heading: <code class="class">text-sm font-semibold text-text</code>.
-  Entry row: <code class="class">rounded-xl border border-border bg-surface px-3.5 py-2.5 hover:bg-surface-hover</code> (same
-  card-row pattern as everywhere else, just not rounded-2xl since it's a list row, not a card).
-  Entries are derived live from each series' <code class="class">watchDays</code> + remaining unwatched count —
-  see <code class="class">src/lib/schedule.js</code>, never stored.
+  <code class="class">RatingRow</code> in SeriesDetail.jsx — only rendered when <code class="class">series.status === 'completed'</code>.
+  Same edit/display/add pattern as <code class="class">LinkRow</code>: plain text "Valutazione: X/10" (no icon), a small
+  <code class="class">text-xs text-muted</code> "Modifica" button, or a "+ Aggiungi valutazione" <code class="class">text-accent hover:underline</code>
+  link when unset. Input: <code class="class">type="number" min="1" max="10" step="0.5"</code>, same input classes as the link field.
+  Shown on the card too, next to the status badge, only for completed+rated series: <code class="class">text-xs text-muted</code>.
+</p>
+
+<h2>Calendario (month grid)</h2>
+<p class="lede">
+  <code class="class">src/pages/Calendar.jsx</code> — month-grid layout, mobile-first: 7 columns (Lun-Dom), each cell
+  <code class="class">h-12 sm:h-14 rounded-lg border</code> showing the date number plus one small dot
+  (<code class="class">h-1.5 w-1.5 rounded-full</code>) per scheduled/watched entry — <code class="class">bg-accent-solid</code>
+  for real watch history, <code class="class">bg-muted</code> for future projected entries. Selected day:
+  <code class="class">border-accent-solid bg-accent-soft</code>. Today (unselected): <code class="class">border-accent-solid bg-surface</code>.
+  Tapping a cell selects it and shows its full entry list below in the same
+  <code class="class">rounded-xl border border-border bg-surface px-3.5 py-2.5</code> row pattern used elsewhere; watched
+  entries get an inline <code class="class">type="date"</code> input to correct the recorded date.
+  Future entries are derived live (never stored) from each series' <code class="class">watchDays</code> + remaining
+  unwatched count; past/today entries come from the real per-episode watched date — see
+  <code class="class">src/lib/schedule.js</code>.
 </p>
 <div class="row" style="flex-direction:column; align-items:stretch; max-width:420px">
   <div style="border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; background:var(--surface)">
