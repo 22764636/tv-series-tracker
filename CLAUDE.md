@@ -14,6 +14,15 @@ funzionalità descritte in modo vago ("aggiungi un link", "migliora X"), e
 qualsiasi modifica che tocca dati condivisi/produzione. Meglio una domanda in
 più che una modifica sbagliata o, peggio, dati persi.
 
+## ⚠️ REGOLA CRITICA — niente emoji non richieste
+
+**Non aggiungere emoji a UI, testo, commit message o altro contenuto a meno
+che l'utente non le richieda esplicitamente per quel caso specifico.**
+Questo vale anche per emoji già presenti nel progetto: non riusarle altrove
+né aggiungerne di nuove "per coerenza" o "per abbellire" di propria
+iniziativa. Se l'utente chiede un'emoji specifica in un punto preciso,
+aggiungerla solo lì.
+
 ## Cos'è
 
 Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
@@ -67,6 +76,15 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
+- **Calendario** (`src/pages/Calendar.jsx` + `src/lib/schedule.js`): ogni
+  serie ha un campo opzionale `watchDays` (giorni della settimana in cui si
+  prevede di guardarla). Le date mostrate in calendario **non sono mai
+  salvate**: si ricalcolano ad ogni apertura della pagina da oggi +
+  `watchDays` + numero di episodi non ancora visti rimanenti. Questo è
+  intenzionale: se si salta un giorno di visione previsto, la serie non
+  sparisce dal calendario, semplicemente lo slot si sposta in avanti (il
+  conteggio dipende dagli episodi rimasti, non da una data fissa). Non
+  persistere le occorrenze calcolate né introdurre uno stato "saltato".
 
 ## Stile — palette e principi
 
@@ -136,3 +154,8 @@ dal codice reale è peggio che non averla.
   minimo e coerente con quanto discusso.
 - Prima di un deploy reale, verificare che `npm run build` passi e che le
   env var richieste siano documentate in `README.md`.
+- **Lo stato "Completata" non deve mai essere impostato automaticamente**,
+  nemmeno quando tutti gli episodi risultano visti: resta un'azione manuale
+  esplicita (il bottone si abilita al 100% ma va comunque cliccato). Non
+  aggiungere logica che lo imposti da sola in `toggleEpisode`/
+  `setSeasonWatched` o altrove.

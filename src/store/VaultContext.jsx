@@ -82,6 +82,10 @@ export function VaultProvider({ children }) {
     )
   }
 
+  async function setWatchDays(id, days) {
+    await updateDoc(vaultRef, withUpdatedAt(id, { [`series.${id}.watchDays`]: days }))
+  }
+
   // Marking any episode watched while a series is still "planned" (Da vedere)
   // means you've started it — bump it to "watching" (In corso) automatically.
   function autoStartUpdates(id, watched) {
@@ -117,6 +121,7 @@ export function VaultProvider({ children }) {
     removeSeries,
     setStatus,
     setLink,
+    setWatchDays,
     toggleEpisode,
     setSeasonWatched,
   }

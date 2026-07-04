@@ -4,6 +4,7 @@ import Header from './components/Header'
 import AddSeriesModal from './components/AddSeriesModal'
 import Home from './pages/Home'
 import SeriesDetail from './pages/SeriesDetail'
+import Calendar from './pages/Calendar'
 import { VaultProvider, useVault } from './store/VaultContext'
 
 function AppShell() {
@@ -26,6 +27,7 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/serie/:id" element={<SeriesDetail />} />
+          <Route path="/calendario" element={<Calendar />} />
         </Routes>
       )}
 
