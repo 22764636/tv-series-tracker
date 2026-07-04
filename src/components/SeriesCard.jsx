@@ -39,16 +39,17 @@ export default function SeriesCard({ series }) {
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-2 text-sm font-semibold text-text">{series.title}</h3>
           {series.link && (
-            <a
-              href={series.link}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                window.open(series.link, '_blank', 'noopener,noreferrer')
+              }}
               aria-label="Link esterno"
               className="shrink-0 text-muted hover:text-accent"
             >
               🔗
-            </a>
+            </button>
           )}
         </div>
         <StatusBadge status={series.status} />

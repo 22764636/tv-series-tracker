@@ -56,7 +56,7 @@ export function VaultProvider({ children }) {
         series: {
           [id]: {
             ...entry,
-            status: entry.status ?? 'watching',
+            status: entry.status ?? 'planned',
             watched: {},
             addedAt: now,
             updatedAt: now,
@@ -82,13 +82,24 @@ export function VaultProvider({ children }) {
     )
   }
 
+  // Marking any episode watched while a series is still "planned" (Da vedere)
+  // means you've started it — bump it to "watching" (In corso) automatically.
+  function autoStartUpdates(id, watched) {
+    return watched && seriesMap?.[id]?.status === 'planned'
+      ? { [`series.${id}.status`]: 'watching' }
+      : {}
+  }
+
   async function toggleEpisode(id, season, episode, watched) {
     const path = `series.${id}.watched.${episodeKey(season, episode)}`
-    await updateDoc(vaultRef, withUpdatedAt(id, { [path]: watched ? true : deleteField() }))
+    await updateDoc(
+      vaultRef,
+      withUpdatedAt(id, { [path]: watched ? true : deleteField(), ...autoStartUpdates(id, watched) }),
+    )
   }
 
   async function setSeasonWatched(id, season, episodeCount, watched) {
-    const updates = withUpdatedAt(id)
+    const updates = withUpdatedAt(id, autoStartUpdates(id, watched))
     for (let ep = 1; ep <= episodeCount; ep++) {
       updates[`series.${id}.watched.${episodeKey(season, ep)}`] = watched
         ? true
