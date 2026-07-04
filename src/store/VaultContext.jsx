@@ -27,12 +27,11 @@ export function VaultProvider({ children }) {
   useEffect(() => {
     if (!firebaseConfigured) return
 
-    // Make sure the shared document exists before any updateDoc() call
-    // relies on it (updateDoc fails on a missing document, setDoc merges).
-    setDoc(vaultRef, { series: {} }, { merge: true }).catch((err) =>
-      setError(err.message),
-    )
-
+    // Do NOT pre-create the doc with setDoc(vaultRef, { series: {} }, { merge: true })
+    // here: Firestore computes merge field masks from leaf keys, and an empty
+    // object has none, so it falls back to replacing the whole `series` map —
+    // wiping every device's data on the next app load. addSeries() below already
+    // creates the doc on first write (via merge), so no bootstrap is needed.
     const unsubscribe = onSnapshot(
       vaultRef,
       (snap) => setSeriesMap(snap.data()?.series ?? {}),
@@ -76,6 +75,13 @@ export function VaultProvider({ children }) {
     await updateDoc(vaultRef, withUpdatedAt(id, { [`series.${id}.status`]: status }))
   }
 
+  async function setLink(id, link) {
+    await updateDoc(
+      vaultRef,
+      withUpdatedAt(id, { [`series.${id}.link`]: link ? link : deleteField() }),
+    )
+  }
+
   async function toggleEpisode(id, season, episode, watched) {
     const path = `series.${id}.watched.${episodeKey(season, episode)}`
     await updateDoc(vaultRef, withUpdatedAt(id, { [path]: watched ? true : deleteField() }))
@@ -99,6 +105,7 @@ export function VaultProvider({ children }) {
     addSeries,
     removeSeries,
     setStatus,
+    setLink,
     toggleEpisode,
     setSeasonWatched,
   }

@@ -2,6 +2,18 @@
 
 Regole per lavorare su questo progetto. Leggerle prima di ogni modifica.
 
+## ⚠️ REGOLA CRITICA — massima priorità
+
+**Se una richiesta è ambigua o sottospecificata, FERMARSI E CHIEDERE prima di
+implementare.** Non indovinare, non interpretare a piacere, non scegliere in
+autonomia il comportamento "più sensato" quando esistono più interpretazioni
+plausibili e diverse tra loro. Questo vale in particolare per: comportamenti
+UX non specificati nel dettaglio (es. cosa deve succedere esattamente quando
+un utente interagisce con un elemento in uno stato particolare), nuove
+funzionalità descritte in modo vago ("aggiungi un link", "migliora X"), e
+qualsiasi modifica che tocca dati condivisi/produzione. Meglio una domanda in
+più che una modifica sbagliata o, peggio, dati persi.
+
 ## Cos'è
 
 Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
@@ -39,6 +51,17 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     nello stesso momento) usano `updateDoc` con path puntati
     (`series.<id>.watched.S1E2`), mai riscritture dell'intero documento:
     mantenere questo pattern per ogni nuova mutazione sui dati.
+  - **Trappola nota (bug reale già capitato, non ripetere)**: `setDoc(ref,
+    { campo: {} }, { merge: true })` con un oggetto **vuoto** NON lascia
+    intatto il campo esistente — Firestore calcola la maschera di merge dai
+    percorsi delle chiavi annidate, e un oggetto vuoto non ne ha nessuna,
+    quindi il campo viene sostituito interamente con `{}`. Questo ha
+    cancellato l'intera libreria condivisa (bug corretto in
+    `VaultContext.jsx`: mai fare un "ensure doc exists" con un campo vuoto su
+    un doc che può già contenere dati). Se serve creare il documento al primo
+    utilizzo, farlo solo con `setDoc` di un oggetto che contiene già i dati
+    reali da scrivere (es. dentro `addSeries`), mai con un placeholder vuoto
+    su un mount/effect che gira ad ogni apertura dell'app.
 - **Dati serie**: ricerca tramite TMDB API (`src/lib/tmdb.js`) con fallback
   di inserimento manuale (tab "Manuale" in `AddSeriesModal`) per le serie di
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
@@ -62,6 +85,24 @@ come variabili CSS/token Tailwind semantici:
 
 Segue automaticamente lo schema chiaro/scuro del sistema operativo
 dell'utente (`prefers-color-scheme`), nessun toggle manuale da mantenere.
+
+## Style guide di riferimento — `design/style-guide.html`
+
+Esiste una pagina HTML statica e autonoma, `design/style-guide.html`, che
+elenca **ogni** token colore (nome variabile CSS + hex, in chiaro e scuro,
+copiabile al click), e i pattern/classi di ogni componente (card, modale,
+badge, bottoni, tabs, progress bar, episodi...) effettivamente usati
+nell'app. Apribile direttamente nel browser, non fa parte della build React.
+
+**Perché esiste**: permette di riferirsi a elementi/colori per nome (es.
+"il bottone accent-solid", "il colore success-soft") invece che dover
+descrivere tutto da zero ogni volta, ed evita la deriva tra "come pensiamo
+sia fatta l'UI" e "come è fatta davvero".
+
+**Va tenuta aggiornata SEMPRE**: ogni volta che si aggiunge/modifica un
+componente, una classe, un colore o un token, aggiornare
+`design/style-guide.html` nello stesso commit. Una style guide disallineata
+dal codice reale è peggio che non averla.
 
 ## Regola di coerenza (esplicitamente richiesta)
 
