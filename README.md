@@ -1,37 +1,39 @@
 # Serie — TV Series Tracker
 
-Webapp gratuita e multi-device per tenere traccia delle serie TV che stai
-guardando, stagione per stagione, episodio per episodio. Nessun login: chi
-apre l'app vede e modifica la stessa libreria condivisa.
+Free, multi-device webapp to track the TV series you're watching, season by
+season, episode by episode. No login: whoever opens the app sees and edits
+the same shared library.
 
-Vedi [`CLAUDE.md`](./CLAUDE.md) per le decisioni architetturali e le regole
-di stile/coerenza del progetto.
+See [`CLAUDE.md`](./CLAUDE.md) for architecture decisions and the project's
+style/consistency rules. See [`design/style-guide.html`](./design/style-guide.html)
+for the full visual reference (every color token, component, and class used
+in the app).
 
 ## Stack
 
 - React + Vite + Tailwind CSS v4
-- Firebase Firestore come storage condiviso (nessun database da amministrare,
-  piano gratuito che non si disattiva per inattività)
-- TMDB API per la ricerca automatica delle serie (con fallback manuale)
-- Hosting su GitHub Pages, deploy automatico via GitHub Actions
+- Firebase Firestore as shared storage (no database to administer, free tier
+  that doesn't deactivate from inactivity)
+- TMDB API for automatic series search (with manual fallback)
+- Hosted on GitHub Pages, automatic deploy via GitHub Actions
 
-## Setup locale
+## Local setup
 
 ```bash
 npm install
-cp .env.example .env.local   # poi compila le chiavi (vedi sotto)
+cp .env.example .env.local   # then fill in the keys (see below)
 npm run dev
 ```
 
-### 1. Firebase (storage dati)
+### 1. Firebase (data storage)
 
-1. Crea un progetto gratuito su [Firebase Console](https://console.firebase.google.com/).
-2. Aggiungi un'app **Web** al progetto (icona `</>`) e copia la config che
-   ti mostra (`apiKey`, `authDomain`, `projectId`, ...) nelle variabili
-   `VITE_FIREBASE_*` del tuo `.env.local`.
-3. Attiva **Firestore Database** (modalità produzione va bene) dalla sezione
-   "Build" della console.
-4. Nella tab **Regole** di Firestore, imposta:
+1. Create a free project at [Firebase Console](https://console.firebase.google.com/).
+2. Add a **Web** app to the project (`</>` icon) and copy the config it
+   shows you (`apiKey`, `authDomain`, `projectId`, ...) into the
+   `VITE_FIREBASE_*` variables in your `.env.local`.
+3. Enable **Firestore Database** (production mode is fine) from the "Build"
+   section of the console.
+4. In the Firestore **Rules** tab, set:
 
    ```
    rules_version = '2';
@@ -44,38 +46,37 @@ npm run dev
    }
    ```
 
-   ⚠️ Questo rende il documento condiviso leggibile/scrivibile da chiunque
-   conosca l'URL dell'app (non c'è login). Scelta consapevole per un
-   tracker personale a basso rischio — vedi `CLAUDE.md`. Non salvarci dati
-   sensibili.
+   ⚠️ This makes the shared document readable/writable by anyone who knows
+   the app's URL (there's no login). A conscious tradeoff for a low-risk
+   personal tracker — see `CLAUDE.md`. Don't store sensitive data in it.
 
-### 2. TMDB (dati serie TV)
+### 2. TMDB (TV series data)
 
-1. Crea un account gratuito su [themoviedb.org](https://www.themoviedb.org/).
-2. Vai su **Impostazioni > API** e richiedi una API Key (v3 auth, gratuita).
-3. Incollala in `VITE_TMDB_API_KEY` nel tuo `.env.local`.
+1. Create a free account at [themoviedb.org](https://www.themoviedb.org/).
+2. Go to **Settings > API** and request an API Key (v3 auth, free).
+3. Paste it into `VITE_TMDB_API_KEY` in your `.env.local`.
 
-Se una serie non è su TMDB (contenuti di nicchia), usa la tab "Manuale"
-nel modale "Aggiungi serie".
+If a series isn't on TMDB (niche content), use the "Manual" tab in the "Add
+series" modal.
 
-## Deploy su GitHub Pages
+## Deploying to GitHub Pages
 
-Il workflow `.github/workflows/deploy.yml` builda e pubblica l'app ad ogni
-push su `main`.
+The `.github/workflows/deploy.yml` workflow builds and publishes the app on
+every push to `main`.
 
-1. Nelle impostazioni del repo, **Settings > Pages**, imposta la sorgente su
+1. In the repo settings, **Settings > Pages**, set the source to
    **GitHub Actions**.
-2. In **Settings > Secrets and variables > Actions**, aggiungi come secret
-   ognuna delle variabili elencate in `.env.example`
+2. In **Settings > Secrets and variables > Actions**, add each variable
+   listed in `.env.example` as a secret
    (`VITE_FIREBASE_API_KEY`, ..., `VITE_TMDB_API_KEY`).
-3. Push su `main`: il sito sarà pubblicato su
-   `https://<utente>.github.io/tv-series-tracker/`.
+3. Push to `main`: the site will be published at
+   `https://<user>.github.io/tv-series-tracker/`.
 
-Se rinomini il repository, aggiorna anche `base` in `vite.config.js`.
+If you rename the repository, also update `base` in `vite.config.js`.
 
-## Script
+## Scripts
 
-- `npm run dev` — sviluppo locale
-- `npm run build` — build di produzione in `dist/`
-- `npm run preview` — anteprima della build
-- `npm run lint` — lint con Oxlint
+- `npm run dev` — local development
+- `npm run build` — production build into `dist/`
+- `npm run preview` — preview the build
+- `npm run lint` — lint with Oxlint

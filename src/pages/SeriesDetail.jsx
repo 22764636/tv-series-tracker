@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useVault, episodeKey } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
@@ -6,7 +7,8 @@ import { progressRatio, totalEpisodes, watchedCount, STATUS_META } from '../lib/
 export default function SeriesDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getSeries, setStatus, toggleEpisode, setSeasonWatched, removeSeries } = useVault()
+  const { getSeries, setStatus, setLink, toggleEpisode, setSeasonWatched, removeSeries } =
+    useVault()
   const series = getSeries(id)
 
   if (!series) {
@@ -19,6 +21,9 @@ export default function SeriesDetail() {
       </div>
     )
   }
+
+  const locked = series.status === 'dropped'
+  const complete = progressRatio(series) === 1
 
   async function handleDelete() {
     if (!window.confirm(`Eliminare "${series.title}" dalla libreria?`)) return
@@ -47,19 +52,26 @@ export default function SeriesDetail() {
           <h1 className="text-xl font-semibold text-text sm:text-2xl">{series.title}</h1>
 
           <div className="flex flex-wrap gap-1.5">
-            {Object.entries(STATUS_META).map(([key, meta]) => (
-              <button
-                key={key}
-                onClick={() => setStatus(series.id, key)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  series.status === key
-                    ? 'border-accent-solid bg-accent-solid text-white'
-                    : 'border-border text-muted hover:bg-surface-hover'
-                }`}
-              >
-                {meta.label}
-              </button>
-            ))}
+            {Object.entries(STATUS_META).map(([key, meta]) => {
+              const disabled = key === 'completed' && !complete
+              return (
+                <button
+                  key={key}
+                  disabled={disabled}
+                  onClick={() => !disabled && setStatus(series.id, key)}
+                  title={disabled ? 'Disponibile solo quando tutti gli episodi sono visti' : undefined}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    series.status === key
+                      ? 'border-accent-solid bg-accent-solid text-white'
+                      : disabled
+                        ? 'cursor-not-allowed border-border text-muted opacity-50'
+                        : 'border-border text-muted hover:bg-surface-hover'
+                  }`}
+                >
+                  {meta.label}
+                </button>
+              )
+            })}
           </div>
 
           <div>
@@ -68,6 +80,8 @@ export default function SeriesDetail() {
               {watchedCount(series)}/{totalEpisodes(series)} episodi visti
             </p>
           </div>
+
+          <LinkRow series={series} onSetLink={(link) => setLink(series.id, link)} />
 
           <button
             onClick={handleDelete}
@@ -79,6 +93,12 @@ export default function SeriesDetail() {
       </div>
 
       <div className="mt-8 flex flex-col gap-6">
+        {locked && (
+          <p className="text-sm text-muted">
+            Serie abbandonata: rimetti lo stato su "In corso" o "Da vedere" per poter segnare
+            episodi.
+          </p>
+        )}
         {series.seasons
           .slice()
           .sort((a, b) => a.number - b.number)
@@ -87,6 +107,7 @@ export default function SeriesDetail() {
               key={season.number}
               series={series}
               season={season}
+              locked={locked}
               onToggleEpisode={toggleEpisode}
               onToggleSeason={setSeasonWatched}
             />
@@ -96,7 +117,75 @@ export default function SeriesDetail() {
   )
 }
 
-function SeasonBlock({ series, season, onToggleEpisode, onToggleSeason }) {
+function LinkRow({ series, onSetLink }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(series.link ?? '')
+
+  async function save(e) {
+    e.preventDefault()
+    await onSetLink(value.trim() || null)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={save} className="flex items-center gap-2">
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="https://..."
+          className="w-full max-w-xs rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+        />
+        <button type="submit" className="text-xs font-medium text-accent hover:underline">
+          Salva
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="text-xs text-muted hover:text-text"
+        >
+          Annulla
+        </button>
+      </form>
+    )
+  }
+
+  if (series.link) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <a
+          href={series.link}
+          target="_blank"
+          rel="noreferrer"
+          className="max-w-[220px] truncate text-accent hover:underline"
+        >
+          🔗 {series.link}
+        </a>
+        <button
+          onClick={() => {
+            setValue(series.link)
+            setEditing(true)
+          }}
+          className="text-xs text-muted hover:text-text"
+        >
+          Modifica
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="self-start text-sm text-accent hover:underline"
+    >
+      + Aggiungi link
+    </button>
+  )
+}
+
+function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason }) {
   const episodes = Array.from({ length: season.episodeCount }, (_, i) => i + 1)
   const allWatched = episodes.every((ep) => series.watched?.[episodeKey(season.number, ep)])
 
@@ -105,8 +194,13 @@ function SeasonBlock({ series, season, onToggleEpisode, onToggleSeason }) {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-text">Stagione {season.number}</h2>
         <button
+          disabled={locked}
           onClick={() => onToggleSeason(series.id, season.number, season.episodeCount, !allWatched)}
-          className="text-xs font-medium text-accent hover:underline"
+          className={`text-xs font-medium ${
+            locked
+              ? 'cursor-not-allowed text-muted opacity-50'
+              : 'text-accent hover:underline'
+          }`}
         >
           {allWatched ? 'Segna non vista' : 'Segna tutta vista'}
         </button>
@@ -117,12 +211,13 @@ function SeasonBlock({ series, season, onToggleEpisode, onToggleSeason }) {
           return (
             <button
               key={ep}
+              disabled={locked}
               onClick={() => onToggleEpisode(series.id, season.number, ep, !watched)}
               className={`aspect-square rounded-lg border text-xs font-medium transition-colors ${
                 watched
                   ? 'border-accent-solid bg-accent-solid text-white'
                   : 'border-border bg-surface text-muted hover:bg-surface-hover'
-              }`}
+              } ${locked ? 'cursor-not-allowed opacity-50' : ''}`}
               title={`S${season.number}E${ep}`}
             >
               {ep}

@@ -38,6 +38,19 @@ export default function SeriesCard({ series }) {
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex items-start justify-between gap-2">
           <h3 className="line-clamp-2 text-sm font-semibold text-text">{series.title}</h3>
+          {series.link && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                window.open(series.link, '_blank', 'noopener,noreferrer')
+              }}
+              aria-label="Link esterno"
+              className="shrink-0 text-muted hover:text-accent"
+            >
+              🔗
+            </button>
+          )}
         </div>
         <StatusBadge status={series.status} />
 
@@ -47,10 +60,10 @@ export default function SeriesCard({ series }) {
             <span>
               {watchedCount(series)}/{total} episodi
             </span>
-            {next && (
+            {next && series.status !== 'dropped' && (
               <button
                 onClick={markNextWatched}
-                className="rounded-full px-2 py-0.5 font-medium text-accent hover:bg-accent-soft"
+                className="rounded-full bg-accent-solid px-2.5 py-1 font-medium text-white transition-colors hover:bg-accent-solid-hover"
               >
                 Segna S{next.season}E{next.episode}
               </button>

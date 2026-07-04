@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Serie — Style Guide</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface-hover: #f4f4f5;
+    --text: #18181b;
+    --muted: #71717a;
+    --border: #e4e4e7;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --accent-soft: #eef2ff;
+    --accent-solid: #4f46e5;
+    --accent-solid-hover: #4338ca;
+    --success: #10b981;
+    --success-soft: #ecfdf5;
+    --danger: #ef4444;
+    --danger-soft: #fef2f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0a0b;
+      --surface: #18181b;
+      --surface-hover: #202023;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --border: #27272a;
+      --accent: #818cf8;
+      --accent-hover: #a5b4fc;
+      --accent-soft: #1e1b3a;
+      --success: #34d399;
+      --success-soft: #062e22;
+      --danger: #f87171;
+      --danger-soft: #3a1414;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid var(--border); }
+  p.lede { color: var(--muted); margin: 0 0 8px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .swatch {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+    transition: transform .1s;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch .fill { height: 56px; }
+  .swatch .meta { padding: 8px 10px; }
+  .swatch .name { font-weight: 600; }
+  .swatch .hex { color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+  .swatch .copied { color: var(--success); font-weight: 600; display: none; }
+  .swatch.just-copied .hex, .swatch.just-copied .name { display: none; }
+  .swatch.just-copied .copied { display: block; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  code.class { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--surface-hover); padding: 2px 6px; border-radius: 6px; }
+  .card-demo { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; width: 160px; background: var(--surface); }
+  .card-demo .poster { height: 100px; background: var(--surface-hover); }
+  .card-demo .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .card-demo h3 { font-size: 13px; margin: 0; }
+
+  .btn-solid { border-radius: 999px; background: var(--accent-solid); color: white; padding: 8px 16px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; }
+  .btn-solid:hover { background: var(--accent-solid-hover); }
+  .pill-active { border-radius: 999px; background: var(--accent-solid); color: white; padding: 6px 14px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); }
+  .pill-inactive { border-radius: 999px; background: var(--surface); color: var(--muted); padding: 6px 14px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); }
+  .badge { border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 500; display: inline-block; }
+  .badge-accent { background: var(--accent-soft); color: var(--accent); }
+  .badge-muted { background: var(--surface-hover); color: var(--muted); }
+  .badge-success { background: var(--success-soft); color: var(--success); }
+  .badge-danger { background: var(--danger-soft); color: var(--danger); }
+
+  .progress-track { height: 6px; border-radius: 999px; background: var(--border); width: 200px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+
+  .ep-watched { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-solid); color: white; border: 1px solid var(--accent-solid); font-size: 12px; }
+  .ep-unwatched { width: 32px; height: 32px; border-radius: 8px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); font-size: 12px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+
+  .radius-demo { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<h1>Serie — Style Guide</h1>
+<p class="lede">
+  Living reference for every color token, component, and Tailwind class used in the app.
+  Click any swatch to copy its hex. Follows the OS light/dark scheme automatically, same as the app.
+</p>
+<p class="lede"><strong>Keep this file in sync whenever a component's markup/classes change — see CLAUDE.md.</strong></p>
+
+<h2>Color tokens</h2>
+<p class="lede">Defined once in <code class="class">src/index.css</code> as Tailwind v4 <code class="class">@theme</code> variables. Values shown are for the current OS color scheme (toggle your OS theme to see the other side).</p>
+<div class="grid" id="colorGrid"></div>
+
+<h2>Typography</h2>
+<table>
+  <tr><th>Usage</th><th>Class</th><th>Where</th></tr>
+  <tr><td>Page title</td><td><code class="class">text-xl sm:text-2xl font-semibold text-text</code></td><td>SeriesDetail title</td></tr>
+  <tr><td>Modal title</td><td><code class="class">text-lg font-semibold text-text</code></td><td>Modal.jsx h2</td></tr>
+  <tr><td>Card title</td><td><code class="class">text-sm font-semibold text-text</code></td><td>SeriesCard h3</td></tr>
+  <tr><td>Body / labels</td><td><code class="class">text-sm text-text</code></td><td>form labels, buttons</td></tr>
+  <tr><td>Secondary / meta</td><td><code class="class">text-xs text-muted</code> or <code class="class">text-sm text-muted</code></td><td>episode counts, hints, dates</td></tr>
+</table>
+
+<h2>Border radius scale</h2>
+<div class="row">
+  <div class="radius-demo" style="border-radius:8px; padding:8px 14px;">rounded-lg — inputs, episode buttons</div>
+  <div class="radius-demo" style="border-radius:12px; padding:8px 14px;">rounded-xl — form inputs, modal buttons</div>
+  <div class="radius-demo" style="border-radius:16px; padding:8px 14px;">rounded-2xl — cards, modals, empty state</div>
+  <div class="radius-demo" style="border-radius:999px; padding:8px 14px;">rounded-full — pills, badges, solid buttons</div>
+</div>
+
+<h2>Buttons</h2>
+<p class="lede">Solid buttons always pair <code class="class">bg-accent-solid</code> (constant across themes) with <code class="class">text-white</code> — never <code class="class">bg-accent</code> with white text, since <code class="class">accent</code> itself adapts per theme and isn't guaranteed to contrast with white.</p>
+<div class="row">
+  <button class="btn-solid">+ Aggiungi serie</button>
+  <button class="btn-solid">Segna S1E2</button>
+  <span class="pill-active">Tutte</span>
+  <span class="pill-inactive">In corso</span>
+</div>
+<table style="margin-top:12px">
+  <tr><th>Element</th><th>Classes</th></tr>
+  <tr><td>Primary solid button</td><td><code class="class">rounded-full bg-accent-solid px-4 py-2 text-sm font-medium text-white hover:bg-accent-solid-hover</code></td></tr>
+  <tr><td>Card quick-action button</td><td><code class="class">rounded-full bg-accent-solid px-2.5 py-1 font-medium text-white hover:bg-accent-solid-hover</code></td></tr>
+  <tr><td>Tab pill (active)</td><td><code class="class">rounded-full px-3.5 py-1.5 text-sm font-medium bg-accent-solid text-white border border-border</code></td></tr>
+  <tr><td>Tab pill (inactive)</td><td><code class="class">rounded-full px-3.5 py-1.5 text-sm font-medium bg-surface text-muted hover:bg-surface-hover border border-border</code></td></tr>
+  <tr><td>Text link / low-emphasis action</td><td><code class="class">text-accent hover:underline</code> (e.g. "Segna tutta vista")</td></tr>
+  <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
+</table>
+
+<h2>Status badges</h2>
+<p class="lede"><code class="class">src/components/StatusBadge.jsx</code> — base class <code class="class">rounded-full px-2.5 py-1 text-xs font-medium</code>, color pair per status.</p>
+<div class="row">
+  <span class="badge badge-accent">In corso</span>
+  <span class="badge badge-muted">Da vedere</span>
+  <span class="badge badge-success">Completata</span>
+  <span class="badge badge-danger">Abbandonata</span>
+</div>
+
+<h2>Progress bar</h2>
+<p class="lede"><code class="class">src/components/ProgressBar.jsx</code> — track <code class="class">h-1.5 rounded-full bg-border</code>, fill <code class="class">h-full rounded-full bg-accent</code>.</p>
+<div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
+
+<h2>Episode buttons (SeriesDetail)</h2>
+<p class="lede">Grid buttons in <code class="class">src/pages/SeriesDetail.jsx</code>, <code class="class">aspect-square rounded-lg border text-xs font-medium</code>.</p>
+<div class="row">
+  <button class="ep-watched">1</button>
+  <button class="ep-watched">2</button>
+  <button class="ep-unwatched">3</button>
+  <button class="ep-unwatched">4</button>
+</div>
+
+<h2>Card (SeriesCard)</h2>
+<div class="card-demo">
+  <div class="poster"></div>
+  <div class="body">
+    <h3>Serie di Prova</h3>
+    <span class="badge badge-accent" style="width:fit-content">In corso</span>
+    <div class="progress-track" style="width:100%"><div class="progress-fill" style="width:40%"></div></div>
+  </div>
+</div>
+<p class="lede" style="margin-top:8px">Class: <code class="class">rounded-2xl border border-border bg-surface hover:bg-surface-hover</code>. Poster placeholder (no image): <code class="class">bg-surface-hover text-muted text-3xl font-semibold</code> showing the title's first letter.</p>
+
+<h2>Modal</h2>
+<p class="lede">
+  Overlay: <code class="class">fixed inset-0 bg-black/40 backdrop-blur-sm</code>.
+  Panel: <code class="class">rounded-2xl border border-border bg-surface p-5 shadow-xl</code>.
+  Close button: <code class="class">rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-text</code>.
+</p>
+
+<h2>Form inputs</h2>
+<p class="lede">Used in AddSeriesModal search/manual forms: <code class="class">rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent</code>.</p>
+
+<script>
+  const tokens = [
+    ['bg', '--bg'], ['surface', '--surface'], ['surface-hover', '--surface-hover'],
+    ['text', '--text'], ['muted', '--muted'], ['border', '--border'],
+    ['accent', '--accent'], ['accent-hover', '--accent-hover'], ['accent-soft', '--accent-soft'],
+    ['accent-solid', '--accent-solid'], ['accent-solid-hover', '--accent-solid-hover'],
+    ['success', '--success'], ['success-soft', '--success-soft'],
+    ['danger', '--danger'], ['danger-soft', '--danger-soft'],
+  ];
+  const grid = document.getElementById('colorGrid');
+  const styles = getComputedStyle(document.documentElement);
+  tokens.forEach(([name, cssVar]) => {
+    const hex = styles.getPropertyValue(cssVar).trim();
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    el.innerHTML = `
+      <div class="fill" style="background: var(${cssVar})"></div>
+      <div class="meta">
+        <div class="name">${name}</div>
+        <div class="hex">var(${cssVar}) · ${hex}</div>
+        <div class="copied">Copied ${hex}!</div>
+      </div>`;
+    el.addEventListener('click', () => {
+      navigator.clipboard.writeText(hex);
+      el.classList.add('just-copied');
+      setTimeout(() => el.classList.remove('just-copied'), 1200);
+    });
+    grid.appendChild(el);
+  });
+</script>
+</body>
+</html>
