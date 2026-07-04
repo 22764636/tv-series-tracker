@@ -1,4 +1,6 @@
-import { episodeKey } from '../store/VaultContext'
+export function episodeKey(season, episode) {
+  return `S${season}E${episode}`
+}
 
 export function totalEpisodes(series) {
   return series.seasons.reduce((sum, s) => sum + s.episodeCount, 0)

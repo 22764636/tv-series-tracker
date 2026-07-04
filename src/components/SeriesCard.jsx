@@ -52,7 +52,12 @@ export default function SeriesCard({ series }) {
             </button>
           )}
         </div>
-        <StatusBadge status={series.status} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge status={series.status} />
+          {series.status === 'completed' && series.rating != null && (
+            <span className="text-xs text-muted">{series.rating}/10</span>
+          )}
+        </div>
 
         <div className="mt-auto flex flex-col gap-1.5">
           <ProgressBar ratio={progressRatio(series)} />

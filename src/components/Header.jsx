@@ -3,18 +3,20 @@ import { Link } from 'react-router-dom'
 export default function Header({ onAddSeries }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6 sm:py-4">
         <Link to="/" className="flex items-center gap-2 text-text">
-          <span className="text-lg font-semibold tracking-tight">💙💜 TV Series Tracker</span>
+          <span className="text-base font-semibold tracking-tight sm:text-lg">
+            💙💜 TV Series Tracker
+          </span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Link to="/calendario" className="text-sm font-medium text-muted hover:text-text">
             Calendario
           </Link>
           {onAddSeries && (
             <button
               onClick={onAddSeries}
-              className="rounded-full bg-accent-solid px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-solid-hover"
+              className="rounded-full bg-accent-solid px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-solid-hover sm:px-4 sm:py-2"
             >
               + Aggiungi serie
             </button>
