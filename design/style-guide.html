@@ -149,6 +149,7 @@
   <tr><td>Tab pill (inactive)</td><td><code class="class">rounded-full px-3.5 py-1.5 text-sm font-medium bg-surface text-muted hover:bg-surface-hover border border-border</code></td></tr>
   <tr><td>Text link / low-emphasis action</td><td><code class="class">text-accent hover:underline</code> (e.g. "Segna tutta vista")</td></tr>
   <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
+  <tr><td>Day-of-week / status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>. Used by the status pills and <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
 </table>
 
 <h2>Status badges</h2>
@@ -193,6 +194,21 @@
 
 <h2>Form inputs</h2>
 <p class="lede">Used in AddSeriesModal search/manual forms: <code class="class">rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent</code>.</p>
+
+<h2>Calendario (agenda entries)</h2>
+<p class="lede">
+  <code class="class">src/pages/Calendar.jsx</code> — date group heading: <code class="class">text-sm font-semibold text-text</code>.
+  Entry row: <code class="class">rounded-xl border border-border bg-surface px-3.5 py-2.5 hover:bg-surface-hover</code> (same
+  card-row pattern as everywhere else, just not rounded-2xl since it's a list row, not a card).
+  Entries are derived live from each series' <code class="class">watchDays</code> + remaining unwatched count —
+  see <code class="class">src/lib/schedule.js</code>, never stored.
+</p>
+<div class="row" style="flex-direction:column; align-items:stretch; max-width:420px">
+  <div style="border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; background:var(--surface)">
+    <span style="font-size:14px">ABC</span>
+    <span style="font-size:12px; color:var(--muted)">S1E2</span>
+  </div>
+</div>
 
 <script>
   const tokens = [

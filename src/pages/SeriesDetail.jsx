@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useVault, episodeKey } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
 import { progressRatio, totalEpisodes, watchedCount, STATUS_META } from '../lib/progress'
+import { WEEKDAYS } from '../lib/schedule'
 
 export default function SeriesDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getSeries, setStatus, setLink, toggleEpisode, setSeasonWatched, removeSeries } =
+  const { getSeries, setStatus, setLink, setWatchDays, toggleEpisode, setSeasonWatched, removeSeries } =
     useVault()
   const series = getSeries(id)
 
@@ -82,6 +83,12 @@ export default function SeriesDetail() {
           </div>
 
           <LinkRow series={series} onSetLink={(link) => setLink(series.id, link)} />
+
+          <WatchDaysRow
+            series={series}
+            locked={locked}
+            onSetWatchDays={(days) => setWatchDays(series.id, days)}
+          />
 
           <button
             onClick={handleDelete}
@@ -182,6 +189,43 @@ function LinkRow({ series, onSetLink }) {
     >
       + Aggiungi link
     </button>
+  )
+}
+
+function WatchDaysRow({ series, locked, onSetWatchDays }) {
+  const days = series.watchDays ?? []
+
+  function toggleDay(key) {
+    if (locked) return
+    const next = days.includes(key) ? days.filter((d) => d !== key) : [...days, key]
+    onSetWatchDays(next)
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 text-sm font-medium text-text">Giorni di visione</p>
+      <div className="flex flex-wrap gap-1.5">
+        {WEEKDAYS.map(({ key, label }) => {
+          const active = days.includes(key)
+          return (
+            <button
+              key={key}
+              disabled={locked}
+              onClick={() => toggleDay(key)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                active
+                  ? 'border-accent-solid bg-accent-solid text-white'
+                  : locked
+                    ? 'cursor-not-allowed border-border text-muted opacity-50'
+                    : 'border-border text-muted hover:bg-surface-hover'
+              }`}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
