@@ -1,0 +1,97 @@
+# CLAUDE.md
+
+Regole per lavorare su questo progetto. Leggerle prima di ogni modifica.
+
+## Cos'è
+
+Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
+(stagione/episodio), usata senza login da un piccolo gruppo di persone
+(io + partner) che vedono e modificano gli stessi dati.
+
+## Decisioni architetturali (non cambiare senza discuterne)
+
+- **Stack**: React + Vite + Tailwind CSS v4 (`@tailwindcss/vite`). Nessun
+  framework SSR: non serve, l'app è puramente client-side.
+- **Hosting**: GitHub Pages (statico, gratuito). Deploy automatico via
+  `.github/workflows/deploy.yml` ad ogni push su `main`.
+  - `vite.config.js` ha `base: '/tv-series-tracker/'`: se il nome del repo
+    cambia, va aggiornato anche qui.
+  - Routing con `HashRouter` (non `BrowserRouter`): GitHub Pages non supporta
+    rewrite lato server per client-side routing, l'hash evita 404 sui
+    refresh/link diretti.
+- **Storage dati**: Firebase Firestore (piano gratuito Spark), **non**
+  localStorage (serve multi-device) e **non** un database tradizionale da
+  amministrare. Firestore è stato scelto rispetto a Supabase perché il piano
+  free di Supabase mette in pausa i progetti dopo ~7 giorni di inattività;
+  Firestore no — coerente con il requisito "niente servizi che si
+  disattivano se non usati costantemente".
+  - Un unico documento condiviso: `library/shared`. Nessun login, nessun
+    codice personale: chiunque apra l'app vede e modifica la stessa
+    libreria (vedi `src/lib/firebase.js` e `src/store/VaultContext.jsx`).
+  - **Compromesso di sicurezza noto e accettato**: essendo un'app statica
+    senza autenticazione, la config Firebase è visibile nel bundle JS (è
+    inevitabile lato client) e le regole Firestore permettono lettura/
+    scrittura aperta su quel singolo documento. Chiunque conosca l'URL
+    dell'app potrebbe in teoria leggere/scrivere i dati. Accettabile per un
+    tracker personale a basso rischio tra poche persone fidate. Non
+    aggiungere dati sensibili a questo documento.
+  - Aggiornamenti concorrenti (io + partner che spuntano episodi diversi
+    nello stesso momento) usano `updateDoc` con path puntati
+    (`series.<id>.watched.S1E2`), mai riscritture dell'intero documento:
+    mantenere questo pattern per ogni nuova mutazione sui dati.
+- **Dati serie**: ricerca tramite TMDB API (`src/lib/tmdb.js`) con fallback
+  di inserimento manuale (tab "Manuale" in `AddSeriesModal`) per le serie di
+  nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
+- **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
+  `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
+
+## Stile — palette e principi
+
+Stile minimal. La palette è definita **in un solo posto**,
+`src/index.css` (`@theme` + override in `@media (prefers-color-scheme: dark)`),
+come variabili CSS/token Tailwind semantici:
+
+| Token              | Uso                                  |
+|--------------------|---------------------------------------|
+| `bg` / `surface`   | sfondo pagina / sfondo card-modali    |
+| `text` / `muted`   | testo principale / testo secondario   |
+| `border`           | bordi sottili                         |
+| `accent`           | testo/link/badge d'accento (adatta al tema) |
+| `accent-solid`     | sfondo bottoni pieni (**costante** tra i temi, sempre abbinato a `text-white`) |
+| `success` / `danger` | stati positivi/negativi (badge "Completata", elimina, ecc.) |
+
+Segue automaticamente lo schema chiaro/scuro del sistema operativo
+dell'utente (`prefers-color-scheme`), nessun toggle manuale da mantenere.
+
+## Regola di coerenza (esplicitamente richiesta)
+
+**Stile e funzionalità devono essere coerenti in tutta la webapp.** In pratica:
+
+- Usare sempre le utility semantiche sopra (`bg-surface`, `text-muted`,
+  `bg-accent-solid`, ecc.), mai colori Tailwind grezzi (`bg-indigo-500`,
+  `text-gray-400`...) o colori hardcoded in inline style.
+- Riutilizzare i componenti condivisi (`Modal`, `ProgressBar`, `StatusBadge`,
+  `SeriesCard`, `StatusTabs`, `EmptyState`) invece di reimplementarli con
+  markup/stile leggermente diverso in una pagina specifica.
+- Stesso raggio di bordo (`rounded-xl`/`rounded-2xl` per card e modali,
+  `rounded-full` per pillole/badge/bottoni di stato) ovunque.
+- La logica di progresso/episodio successivo/stato vive **solo** in
+  `src/lib/progress.js` — non duplicare questi calcoli in un componente.
+- Ogni azione utente disponibile in un punto dell'app (es. "Aggiungi serie")
+  deve comportarsi allo stesso modo ovunque sia raggiungibile (bottone
+  nell'header, sempre visibile, stesso modale).
+- Prima di aggiungere una nuova pagina/componente, controllare se esiste già
+  un pattern equivalente da riusare invece di introdurne uno nuovo.
+
+## Regole generali di sviluppo
+
+- Non introdurre un database o backend "vero" (Postgres, MySQL, server
+  custom...) a meno che l'utente non lo richieda esplicitamente: la scelta
+  di Firestore come backend gestito e senza manutenzione è deliberata.
+- Non aggiungere login/autenticazione a meno che l'utente non lo richieda
+  esplicitamente: il flusso "nessun login, dati condivisi" è voluto.
+- Niente funzionalità speculative non richieste (feature flags, ruoli
+  utente, notifiche push, offline-first/service worker...): tenere lo scope
+  minimo e coerente con quanto discusso.
+- Prima di un deploy reale, verificare che `npm run build` passi e che le
+  env var richieste siano documentate in `README.md`.

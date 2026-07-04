@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — single source of truth for color across the whole app.
+ * Every component must use these semantic utilities (bg-bg, text-text,
+ * bg-surface, border-border, text-accent, ...) instead of raw Tailwind
+ * color classes, so the palette stays consistent everywhere.
+ */
+@theme {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f4f4f5;
+  --color-text: #18181b;
+  --color-muted: #71717a;
+  --color-border: #e4e4e7;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-accent-soft: #eef2ff;
+  /* Constant across themes: used for solid-fill buttons paired with white text. */
+  --color-accent-solid: #4f46e5;
+  --color-accent-solid-hover: #4338ca;
+  --color-success: #10b981;
+  --color-success-soft: #ecfdf5;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fef2f2;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0a0a0b;
+    --color-surface: #18181b;
+    --color-surface-hover: #202023;
+    --color-text: #fafafa;
+    --color-muted: #a1a1aa;
+    --color-border: #27272a;
+    --color-accent: #818cf8;
+    --color-accent-hover: #a5b4fc;
+    --color-accent-soft: #1e1b3a;
+    --color-success: #34d399;
+    --color-success-soft: #062e22;
+    --color-danger: #f87171;
+    --color-danger-soft: #3a1414;
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-bg text-text font-sans antialiased;
+  margin: 0;
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+* {
+  box-sizing: border-box;
+}
