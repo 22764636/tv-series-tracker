@@ -201,7 +201,26 @@
   Same edit/display/add pattern as <code class="class">LinkRow</code>: plain text "Valutazione: X/10" (no icon), a small
   <code class="class">text-xs text-muted</code> "Modifica" button, or a "+ Aggiungi valutazione" <code class="class">text-accent hover:underline</code>
   link when unset. Input: <code class="class">type="number" min="1" max="10" step="0.5"</code>, same input classes as the link field.
-  Shown on the card too, next to the status badge, only for completed+rated series: <code class="class">text-xs text-muted</code>.
+  On the card, shown as "Voto X/10" (short label so it still reads as a rating, not just a bare fraction) — the
+  status-badge row uses <code class="class">flex items-center justify-between</code> so the rating sits flush right
+  opposite the badge, instead of just trailing it.
+</p>
+
+<h2>Sort control (Home)</h2>
+<p class="lede">
+  Native <code class="class">&lt;select&gt;</code> in <code class="class">rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text</code>,
+  same row as <code class="class">StatusTabs</code> (parent: <code class="class">flex flex-wrap items-center justify-between gap-3</code>),
+  pushed to the far right by that <code class="class">justify-between</code>. Options: ultimo aggiornamento (default),
+  titolo (A-Z), valutazione, progresso — comparator lives in <code class="class">Home.jsx</code>, reusing
+  <code class="class">progressRatio</code> from progress.js rather than re-deriving it.
+</p>
+
+<h2>Header nav links</h2>
+<p class="lede">
+  "Libreria" and "Calendario" — plain <code class="class">text-sm font-medium text-muted hover:text-text</code> links,
+  no pill/border, sitting left of the solid "+ Aggiungi serie" button. On screens below <code class="class">sm</code>
+  the title collapses to just "💙💜" (hidden/shown via <code class="class">sm:hidden</code> / <code class="class">hidden sm:inline</code>)
+  so the whole header fits on one row instead of wrapping.
 </p>
 
 <h2>Calendario (month grid)</h2>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import { calendarEntriesByDate, dateKey, WEEKDAYS } from '../lib/schedule'
@@ -58,6 +58,30 @@ export default function Calendar() {
     setSelectedDate(today)
   }
 
+  // Mouse wheel (desktop) and swipe (touch) both change month, alongside the
+  // arrow buttons. Wheel is throttled since trackpads fire many small delta
+  // events per gesture — one gesture should move one month, not several.
+  const wheelLocked = useRef(false)
+  function handleWheel(e) {
+    if (Math.abs(e.deltaY) < 15 || wheelLocked.current) return
+    changeMonth(e.deltaY > 0 ? 1 : -1)
+    wheelLocked.current = true
+    setTimeout(() => {
+      wheelLocked.current = false
+    }, 450)
+  }
+
+  const touchStartX = useRef(null)
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX
+  }
+  function handleTouchEnd(e) {
+    if (touchStartX.current == null) return
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current
+    if (Math.abs(deltaX) > 40) changeMonth(deltaX < 0 ? 1 : -1)
+    touchStartX.current = null
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <div className="mb-4 flex items-center justify-between">
@@ -85,16 +109,21 @@ export default function Calendar() {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted">
-        {WEEKDAYS.map(({ key, label }) => (
-          <div key={key} className="py-1">
-            {label}
-          </div>
-        ))}
-      </div>
+      <div
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted">
+          {WEEKDAYS.map(({ key, label }) => (
+            <div key={key} className="py-1">
+              {label}
+            </div>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((date, i) => {
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((date, i) => {
           if (!date) return <div key={i} />
           const key = dateKey(date)
           const entries = entriesByDate.get(key) ?? []
@@ -129,6 +158,7 @@ export default function Calendar() {
             </button>
           )
         })}
+        </div>
       </div>
 
       <div className="mt-6">
