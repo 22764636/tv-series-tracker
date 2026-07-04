@@ -52,10 +52,10 @@ export default function SeriesCard({ series }) {
             </button>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center justify-between gap-1.5">
           <StatusBadge status={series.status} />
           {series.status === 'completed' && series.rating != null && (
-            <span className="text-xs text-muted">{series.rating}/10</span>
+            <span className="text-xs text-muted">Voto {series.rating}/10</span>
           )}
         </div>
 

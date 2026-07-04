@@ -76,6 +76,17 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
+- **Icona app**: cuori blu e viola su un divano, su sfondo quadrato
+  arrotondato `accent-solid`. Due varianti perché il divano non si legge
+  sotto i ~40px:
+  - `public/favicon.svg` — solo i due cuori, usata per il tab del browser
+    (`<link rel="icon">` in `index.html`).
+  - `public/icon.svg` (+ `icon-192.png`/`icon-512.png` esportati dallo
+    stesso SVG per compatibilità PWA/Android) e `apple-touch-icon.png`
+    (180×180) — versione completa con divano, usata in `manifest.json` e
+    per l'icona iOS "aggiungi a Home". Se si rigenera l'icona, aggiornare
+    entrambe le varianti e ri-esportare i PNG (renderizzando l'SVG, non
+    ridisegnandoli a mano).
 - **Calendario** (`src/pages/Calendar.jsx` + `src/lib/schedule.js`), griglia
   mensile (lun-dom, navigazione libera avanti/indietro):
   - Ogni serie ha un campo opzionale `watchDays` (giorni della settimana in
@@ -93,6 +104,9 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     dal piano `watchDays`. La data di un episodio già visto è modificabile
     direttamente dal Calendario (non dalla pagina serie, che resta un
     semplice toggle segna/non-segna visto).
+  - Navigazione tra i mesi: bottoni ← →, rotellina del mouse (desktop) e
+    swipe orizzontale (touch), tutti e tre attivi contemporaneamente sulla
+    stessa griglia — non rimuovere nessuno dei tre in favore degli altri.
 - **`series.watched[SxEy]` è una data (`YYYY-MM-DD`), non `true`**: il
   giorno reale in cui l'episodio è stato segnato visto (vedi `dateKey` in
   `src/lib/schedule.js` — usa i componenti locali della data, MAI
