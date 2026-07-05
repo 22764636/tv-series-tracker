@@ -4,6 +4,7 @@ import { useVault } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
 import RatingChart from '../components/RatingChart'
 import Modal from '../components/Modal'
+import RefreshIcon from '../components/RefreshIcon'
 import {
   progressRatio,
   totalEpisodes,
@@ -103,11 +104,11 @@ export default function SeriesDetail() {
                   disabled={refreshing}
                   aria-label="Aggiorna da TMDB"
                   title="Aggiorna da TMDB"
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-muted hover:bg-surface-hover hover:text-accent active:bg-surface-hover disabled:opacity-50 ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-hover hover:text-accent active:bg-surface-hover disabled:opacity-50 ${
                     refreshing ? 'animate-spin' : ''
                   }`}
                 >
-                  ↻
+                  <RefreshIcon />
                 </button>
               )}
               <button
@@ -407,7 +408,12 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
   return (
     <div>
       <p className="mb-1.5 text-sm font-medium text-text">Giorni di visione</p>
-      <div className="flex flex-wrap gap-1.5">
+      {/* grid-cols-7 on mobile divides the actual available width into 7
+          equal columns, guaranteeing one row on any real device — a fixed
+          px width (e.g. w-10) only fits whatever viewport it was tuned
+          against and silently wraps on narrower phones. Desktop has room
+          to spare, so it switches to a flex row of fixed-width pills. */}
+      <div className="grid grid-cols-7 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
         {WEEKDAYS.map(({ key, shortLabel, fullLabel }) => {
           const active = days.includes(key)
           return (
@@ -415,7 +421,7 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
               key={key}
               disabled={locked}
               onClick={() => toggleDay(key)}
-              className={`w-10 shrink-0 rounded-full border py-1 text-xs font-medium transition-colors sm:w-28 sm:text-sm ${
+              className={`rounded-full border py-1 text-xs font-medium transition-colors sm:w-28 sm:text-sm ${
                 active
                   ? 'border-accent-solid bg-accent-solid text-white'
                   : locked

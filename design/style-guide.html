@@ -150,7 +150,7 @@
   <tr><td>Text link / low-emphasis action</td><td><code class="class">text-accent hover:underline</code> (e.g. "Segna tutta vista")</td></tr>
   <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
   <tr><td>Status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>.</td></tr>
-  <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill, but fixed-width instead of content-width: <code class="class">w-10 sm:w-28 shrink-0 rounded-full border py-1 text-xs font-medium sm:text-sm</code> — every day pill is the same size regardless of label length. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
+  <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill. Below <code class="class">sm</code>, the row is <code class="class">grid grid-cols-7 gap-1</code> (7 equal-width columns dividing the real available width, guaranteeing one row on any device — a fixed <code class="class">w-10</code> px width was tried first and wrapped to two rows on some phones) with pills at <code class="class">rounded-full border py-1 text-xs font-medium</code>; at <code class="class">sm</code> and up it switches to <code class="class">flex flex-wrap gap-1.5</code> with fixed-width <code class="class">sm:w-28 sm:text-sm</code> pills, since desktop has room to spare. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
 </table>
 
 <h2>Status badges</h2>
@@ -209,6 +209,11 @@
   Overlay: <code class="class">fixed inset-0 bg-black/40 backdrop-blur-sm</code>.
   Panel: <code class="class">rounded-2xl border border-border bg-surface p-5 shadow-xl</code>.
   Close button: <code class="class">rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-text</code>.
+  Every modal instance closes on the browser/Android Back button (a <code class="class">history.pushState</code> on
+  open, treating the following popstate as a close) as well as X/overlay-click/Escape — implemented once in
+  Modal.jsx so it applies everywhere without per-modal code. Non-Back closes explicitly pop the pushed history entry
+  themselves so a later Back press doesn't feel like a dead click; see the code comment in Modal.jsx for why this
+  can't be done unconditionally from the effect cleanup (races with React StrictMode's dev-only double mount).
 </p>
 
 <h2>Form inputs</h2>
@@ -240,17 +245,21 @@
   size regardless of glyph. Refresh hovers/actives to <code class="class">text-accent</code>, delete to
   <code class="class">text-danger</code>; both get the same <code class="class">active:</code> treatment as
   <code class="class">hover:</code> since hover never fires on touch — without it, tapping on mobile gave no visual
-  feedback at all. Icons are plain Unicode text symbols, not emoji — <code class="class">↻</code> (refresh,
-  <code class="class">text-lg</code>) and <code class="class">✕</code> (delete, <code class="class">text-base</code>,
-  same character as the Modal close button) — the two sizes differ because ↻ renders visually smaller than ✕ at
-  matched font-size in most fonts; without the bump they read as mismatched even inside identical boxes. There's no
-  non-emoji Unicode magnifying glass, which is why the search icon below is an inline SVG instead. Refresh
+  feedback at all. Delete uses the plain Unicode text symbol <code class="class">✕</code> (not emoji, same character
+  as the Modal close button). Refresh uses <code class="class">RefreshIcon.jsx</code>, an inline SVG (18×18px,
+  <code class="class">stroke="currentColor"</code>) — not the Unicode <code class="class">↻</code> character tried
+  first: that glyph rendered inconsistently across devices/fonts (often visibly smaller/thinner than ✕ at matched
+  font-size), and no text-size class reliably fixed it on every real device. An SVG with explicit pixel dimensions
+  sidesteps font rendering entirely. There's no non-emoji Unicode magnifying glass either, which is why the search
+  icon below is also an inline SVG. Refresh
   (<code class="class">series.source === 'tmdb'</code> only) spins (<code class="class">animate-spin</code>) while
   pending; an error renders as a <code class="class">text-xs text-danger</code> line just under the title row, no
   modal/toast. Delete opens <code class="class">ConfirmDeleteModal</code> (below) instead of acting immediately.
 </p>
 <div class="row" style="align-items:center; gap:6px">
-  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">↻</button>
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+  </button>
   <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">✕</button>
 </div>
 
@@ -291,10 +300,11 @@
   <code class="class">Escape</code> clears and blurs, <code class="class">Enter</code> jumps to the first result.
 </p>
 <p class="lede">
-  <strong>Mobile</strong> (<code class="class">MobileSearchModal.jsx</code> + a floating button in
-  <code class="class">Home.jsx</code>, <code class="class">sm:hidden</code>): a
-  <code class="class">fixed bottom-5 right-5</code> circular <code class="class">bg-accent-solid</code> button, shown
-  only on the Libreria page, carrying <code class="class">SearchIcon.jsx</code> (a small hand-drawn SVG magnifier —
+  <strong>Mobile</strong> (<code class="class">MobileSearchModal.jsx</code> + a floating button in the global
+  <code class="class">App.jsx</code> shell — not a page component, so it stays visible on every route, not just
+  Libreria — <code class="class">sm:hidden</code>): a
+  <code class="class">fixed bottom-5 right-5</code> circular <code class="class">bg-accent-solid</code> button,
+  carrying <code class="class">SearchIcon.jsx</code> (a small hand-drawn SVG magnifier —
   not emoji, see above). Tapping it opens a <code class="class">Modal</code> with the same search input + result list
   pattern as the desktop dropdown, just full-width inside the modal instead of an anchored popover.
 </p>
