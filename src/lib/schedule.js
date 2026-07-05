@@ -1,15 +1,18 @@
 import { episodeKey } from './progress'
 
 // Single source of truth for weekday keys/labels, shared by the per-series
-// watch-days picker (SeriesDetail) and the Calendario page.
+// watch-days picker (SeriesDetail) and the Calendario page. `label` (3-letter)
+// is what Calendario's fixed 7-column header uses. `shortLabel`/`fullLabel`
+// are only for WatchDaysRow, which has room to be more/less abbreviated
+// depending on viewport — not used by Calendario.
 export const WEEKDAYS = [
-  { key: 'mon', label: 'Lun', jsDay: 1 },
-  { key: 'tue', label: 'Mar', jsDay: 2 },
-  { key: 'wed', label: 'Mer', jsDay: 3 },
-  { key: 'thu', label: 'Gio', jsDay: 4 },
-  { key: 'fri', label: 'Ven', jsDay: 5 },
-  { key: 'sat', label: 'Sab', jsDay: 6 },
-  { key: 'sun', label: 'Dom', jsDay: 0 },
+  { key: 'mon', label: 'Lun', shortLabel: 'L', fullLabel: 'Lunedì', jsDay: 1 },
+  { key: 'tue', label: 'Mar', shortLabel: 'Ma', fullLabel: 'Martedì', jsDay: 2 },
+  { key: 'wed', label: 'Mer', shortLabel: 'Me', fullLabel: 'Mercoledì', jsDay: 3 },
+  { key: 'thu', label: 'Gio', shortLabel: 'G', fullLabel: 'Giovedì', jsDay: 4 },
+  { key: 'fri', label: 'Ven', shortLabel: 'V', fullLabel: 'Venerdì', jsDay: 5 },
+  { key: 'sat', label: 'Sab', shortLabel: 'S', fullLabel: 'Sabato', jsDay: 6 },
+  { key: 'sun', label: 'Dom', shortLabel: 'D', fullLabel: 'Domenica', jsDay: 0 },
 ]
 
 // Local-calendar-day key (YYYY-MM-DD). Deliberately NOT date.toISOString(),

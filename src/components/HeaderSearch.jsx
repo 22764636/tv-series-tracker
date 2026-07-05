@@ -1,23 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import { filterSeriesByTitle } from '../lib/search'
 
 // Desktop-only inline search (hidden below sm, replaced by the mobile FAB +
-// modal on Home). Disabled while on a series detail page — searching would
-// just navigate away from the very series you're looking at.
+// modal on Home). Always enabled, including on a series' own detail page —
+// jumping straight to another series from there is a normal thing to want.
 export default function HeaderSearch() {
   const { series } = useVault()
   const navigate = useNavigate()
-  const location = useLocation()
-  const disabled = location.pathname.startsWith('/serie/')
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => {
     function onKeyDown(e) {
-      if (e.key !== '/' || disabled) return
+      if (e.key !== '/') return
       const el = document.activeElement
       const isTyping = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
       if (isTyping) return
@@ -26,9 +24,9 @@ export default function HeaderSearch() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [disabled])
+  }, [])
 
-  const results = disabled ? [] : filterSeriesByTitle(series, query)
+  const results = filterSeriesByTitle(series, query)
 
   function selectResult(s) {
     navigate(`/serie/${s.id}`)
@@ -51,7 +49,6 @@ export default function HeaderSearch() {
       <input
         ref={inputRef}
         value={query}
-        disabled={disabled}
         onChange={(e) => {
           setQuery(e.target.value)
           setOpen(true)
@@ -59,8 +56,8 @@ export default function HeaderSearch() {
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKeyDown}
-        placeholder={disabled ? 'Cerca' : 'Cerca... ( / )'}
-        className="w-40 rounded-full border border-border bg-surface px-3.5 py-1.5 pr-7 text-sm text-text outline-none focus:border-accent focus:w-56 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+        placeholder="Cerca... ( / )"
+        className="w-40 rounded-full border border-border bg-surface px-3.5 py-1.5 pr-7 text-sm text-text outline-none transition-all focus:w-56 focus:border-accent"
       />
       {query && (
         <button

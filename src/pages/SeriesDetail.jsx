@@ -103,7 +103,7 @@ export default function SeriesDetail() {
                   disabled={refreshing}
                   aria-label="Aggiorna da TMDB"
                   title="Aggiorna da TMDB"
-                  className={`rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-accent disabled:opacity-50 ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-muted hover:bg-surface-hover hover:text-accent active:bg-surface-hover disabled:opacity-50 ${
                     refreshing ? 'animate-spin' : ''
                   }`}
                 >
@@ -114,7 +114,7 @@ export default function SeriesDetail() {
                 onClick={() => setShowDeleteConfirm(true)}
                 aria-label="Elimina serie"
                 title="Elimina serie"
-                className="rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-danger"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-base leading-none text-muted hover:bg-surface-hover hover:text-danger active:bg-surface-hover"
               >
                 ✕
               </button>
@@ -408,14 +408,14 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
     <div>
       <p className="mb-1.5 text-sm font-medium text-text">Giorni di visione</p>
       <div className="flex flex-wrap gap-1.5">
-        {WEEKDAYS.map(({ key, label }) => {
+        {WEEKDAYS.map(({ key, shortLabel, fullLabel }) => {
           const active = days.includes(key)
           return (
             <button
               key={key}
               disabled={locked}
               onClick={() => toggleDay(key)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`w-10 shrink-0 rounded-full border py-1 text-xs font-medium transition-colors sm:w-28 sm:text-sm ${
                 active
                   ? 'border-accent-solid bg-accent-solid text-white'
                   : locked
@@ -423,7 +423,8 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
                     : 'border-border text-muted hover:bg-surface-hover'
               }`}
             >
-              {label}
+              <span className="sm:hidden">{shortLabel}</span>
+              <span className="hidden sm:inline">{fullLabel}</span>
             </button>
           )
         })}
