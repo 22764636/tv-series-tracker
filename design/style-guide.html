@@ -149,7 +149,8 @@
   <tr><td>Tab pill (inactive)</td><td><code class="class">rounded-full px-3.5 py-1.5 text-sm font-medium bg-surface text-muted hover:bg-surface-hover border border-border</code></td></tr>
   <tr><td>Text link / low-emphasis action</td><td><code class="class">text-accent hover:underline</code> (e.g. "Segna tutta vista")</td></tr>
   <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
-  <tr><td>Day-of-week / status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>. Used by the status pills and <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
+  <tr><td>Status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>.</td></tr>
+  <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill, but fixed-width instead of content-width: <code class="class">w-10 sm:w-28 shrink-0 rounded-full border py-1 text-xs font-medium sm:text-sm</code> — every day pill is the same size regardless of label length. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
 </table>
 
 <h2>Status badges</h2>
@@ -233,10 +234,16 @@
 <h2>Title-row icon buttons (Aggiorna da TMDB / Elimina serie)</h2>
 <p class="lede">
   Right-aligned in the same flex row as the <code class="class">&lt;h1&gt;</code> title
-  (<code class="class">flex items-start justify-between</code>): <code class="class">rounded-full p-1.5 text-muted
-  hover:bg-surface-hover</code>, refresh hovering to <code class="class">text-accent</code> and delete to
-  <code class="class">text-danger</code>. Icons are plain Unicode text symbols, not emoji — <code class="class">↻</code>
-  for refresh, <code class="class">✕</code> for delete (same character as the Modal close button) — there's no
+  (<code class="class">flex items-start justify-between</code>): both
+  <code class="class">flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-hover
+  active:bg-surface-hover</code> — a fixed box rather than content-driven padding, so the two buttons are the same
+  size regardless of glyph. Refresh hovers/actives to <code class="class">text-accent</code>, delete to
+  <code class="class">text-danger</code>; both get the same <code class="class">active:</code> treatment as
+  <code class="class">hover:</code> since hover never fires on touch — without it, tapping on mobile gave no visual
+  feedback at all. Icons are plain Unicode text symbols, not emoji — <code class="class">↻</code> (refresh,
+  <code class="class">text-lg</code>) and <code class="class">✕</code> (delete, <code class="class">text-base</code>,
+  same character as the Modal close button) — the two sizes differ because ↻ renders visually smaller than ✕ at
+  matched font-size in most fonts; without the bump they read as mismatched even inside identical boxes. There's no
   non-emoji Unicode magnifying glass, which is why the search icon below is an inline SVG instead. Refresh
   (<code class="class">series.source === 'tmdb'</code> only) spins (<code class="class">animate-spin</code>) while
   pending; an error renders as a <code class="class">text-xs text-danger</code> line just under the title row, no
@@ -279,10 +286,9 @@
   inline <code class="class">rounded-full border border-border bg-surface</code> input in the header, widening
   slightly on focus. A dropdown (<code class="class">absolute ... rounded-xl border border-border bg-surface
   shadow-xl</code>) lists matches as poster-thumbnail + title rows, same shape as AddSeriesModal's search results.
-  <strong>Disabled</strong> (grayed, not focusable) whenever the current route is a series detail page — searching
-  away from the series you're already looking at doesn't make sense there. Keyboard shortcut <code class="class">/</code>
-  focuses it (ignored while typing in any other field, or while disabled); <code class="class">Escape</code> clears
-  and blurs, <code class="class">Enter</code> jumps to the first result.
+  Always enabled, including on a series' own detail page (jumping to another series from there is a legitimate thing
+  to want). Keyboard shortcut <code class="class">/</code> focuses it (ignored while typing in any other field);
+  <code class="class">Escape</code> clears and blurs, <code class="class">Enter</code> jumps to the first result.
 </p>
 <p class="lede">
   <strong>Mobile</strong> (<code class="class">MobileSearchModal.jsx</code> + a floating button in

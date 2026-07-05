@@ -382,7 +382,15 @@ dal codice reale è peggio che non averla.
   serie) — sono compatti e ci stanno bene. "Aggiorna da TMDB" ed "Elimina
   serie" sono bottoni icona nella **stessa riga del titolo**, allineati a
   destra (non righe di testo separate: con due sole azioni icona ci sta
-  bene condividere la riga con l'`<h1>`). "Giorni di visione" e
+  bene condividere la riga con l'`<h1>`) — entrambi `h-8 w-8` con
+  `flex items-center justify-center`, così l'area cliccabile è identica a
+  prescindere dal glifo (↻ renderizza visivamente più piccolo di ✕ allo
+  stesso font-size, quindi ↻ usa `text-lg` contro il `text-base` di ✕ per
+  bilanciarli a vista). Entrambi hanno stato hover (`hover:bg-surface-hover`
+  + colore, `hover:text-accent`/`hover:text-danger`) e stato `active` uguale
+  allo hover, perché su mobile l'hover non scatta mai (nessun puntatore) e
+  senza un `active` esplicito il tocco non darebbe nessun feedback visivo.
+  "Giorni di visione" e
   "Valutazione + grafico" sono invece sezioni proprie a piena larghezza
   sotto l'header (card `rounded-2xl border border-border bg-surface p-4`),
   non più schiacciate nella colonna stretta: sono le due sezioni "pesanti"
@@ -403,18 +411,29 @@ dal codice reale è peggio che non averla.
     riusa `Modal`) — mai `window.confirm()` nativo, che non segue lo stile
     dell'app ed è più rischioso da confermare per errore con un bottone
     icona piccolo come la ✕ del titolo.
+  - **Giorni di visione (`WatchDaysRow`)**: bottoni sempre della **stessa
+    larghezza** (`w-10 sm:w-28`, non più dimensionati dal contenuto) così la
+    riga resta allineata a prescindere dal giorno. Etichetta dipendente dal
+    breakpoint (`WEEKDAYS` in `schedule.js` ha ora `shortLabel`/`fullLabel`
+    oltre a `label`): su mobile una sola lettera/due
+    (`shortLabel`: L, Ma, Me, G, V, S, D) per stare su una riga sola senza
+    andare a capo su due righe; da `sm` in su il nome completo del giorno
+    (`fullLabel`: Lunedì, Martedì, ...), perché lì lo spazio non manca. Il
+    `label` a 3 lettere (Lun, Mar, ...) resta invariato ed è usato **solo**
+    dall'intestazione a griglia fissa a 7 colonne del Calendario, non da
+    questi bottoni.
 - **Ricerca serie**: due varianti per piattaforma, stessa logica di
   filtro condivisa (`filterSeriesByTitle` in `src/lib/search.js`, semplice
   substring case-insensitive sul titolo).
   - **Desktop** (`src/components/HeaderSearch.jsx`, nascosta sotto `sm`):
     campo di ricerca inline nell'header con dropdown risultati (poster +
-    titolo, clic naviga alla serie). **Disabilitato quando si è già sulla
-    pagina dettaglio di una serie** (`location.pathname.startsWith('/serie/')`)
-    — cercare da lì porterebbe via dalla serie che si sta già guardando.
-    Scorciatoia da tastiera **`/`** per mettere a fuoco il campo (ignorata
-    se si sta già scrivendo in un altro input/textarea/contenteditable, e
-    se la ricerca è disabilitata); `Escape` svuota e toglie il focus,
-    `Enter` seleziona il primo risultato.
+    titolo, clic naviga alla serie). **Sempre attivo**, anche sulla pagina
+    dettaglio di una serie (nota storica: una versione precedente lo
+    disabilitava lì, corretta esplicitamente dall'utente — saltare da una
+    serie a un'altra tramite ricerca è un uso legittimo). Scorciatoia da
+    tastiera **`/`** per mettere a fuoco il campo (ignorata se si sta già
+    scrivendo in un altro input/textarea/contenteditable); `Escape` svuota
+    e toglie il focus, `Enter` seleziona il primo risultato.
   - **Mobile** (`src/components/MobileSearchModal.jsx` + pulsante flottante
     in `src/pages/Home.jsx`, `fixed bottom-5 right-5`, solo su Libreria,
     icona `SearchIcon.jsx` — SVG disegnata a mano, non emoji: non esiste un
