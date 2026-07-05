@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import { filterSeriesByTitle } from '../lib/search'
+import CloseIcon from './CloseIcon'
 
 // Desktop-only inline search (hidden below sm, replaced by the mobile FAB +
 // modal on Home). Always enabled, including on a series' own detail page —
@@ -70,7 +71,7 @@ export default function HeaderSearch() {
           aria-label="Cancella ricerca"
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
         >
-          ✕
+          <CloseIcon size={14} />
         </button>
       )}
       {open && results.length > 0 && (

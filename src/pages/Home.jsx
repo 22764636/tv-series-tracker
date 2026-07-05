@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import SeriesCard from '../components/SeriesCard'
 import StatusTabs from '../components/StatusTabs'
@@ -11,6 +12,9 @@ const SORT_OPTIONS = [
   { key: 'rating', label: 'Valutazione' },
   { key: 'progress', label: 'Progresso' },
 ]
+const SORT_KEYS = SORT_OPTIONS.map((o) => o.key)
+// Kept in sync with StatusTabs.jsx's own TABS keys.
+const STATUS_KEYS = ['all', 'watching', 'planned', 'completed', 'renewed', 'dropped']
 
 function sortSeries(list, sortKey) {
   const sorted = [...list]
@@ -34,8 +38,33 @@ function sortSeries(list, sortKey) {
 
 export default function Home() {
   const { series } = useVault()
-  const [tab, setTab] = useState('all')
-  const [sortKey, setSortKey] = useState('updated')
+  // Status filter and sort order live in the URL (?status=...&sort=...)
+  // instead of local state, so a specific view is bookmarkable — a
+  // malformed/unknown value in a hand-edited URL just falls back to the
+  // default rather than showing an empty/broken list.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawTab = searchParams.get('status') ?? 'all'
+  const tab = STATUS_KEYS.includes(rawTab) ? rawTab : 'all'
+  const rawSort = searchParams.get('sort') ?? 'updated'
+  const sortKey = SORT_KEYS.includes(rawSort) ? rawSort : 'updated'
+
+  function setTab(next) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === 'all') params.delete('status')
+      else params.set('status', next)
+      return params
+    })
+  }
+
+  function setSortKey(next) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === 'updated') params.delete('sort')
+      else params.set('sort', next)
+      return params
+    })
+  }
 
   const filtered = useMemo(() => {
     const base = tab === 'all' ? series : series.filter((s) => s.status === tab)

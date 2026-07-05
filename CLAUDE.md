@@ -74,13 +74,29 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
 - **Dati serie**: ricerca tramite TMDB API (`src/lib/tmdb.js`) con fallback
   di inserimento manuale (tab "Manuale" in `AddSeriesModal`) per le serie di
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
-  - **Aggiorna da TMDB**: bottone icona (`RefreshIcon.jsx`, SVG disegnata a
-    mano — non il carattere Unicode `↻` usato in una versione precedente:
-    quel glifo rende in modo incoerente tra i font dei diversi dispositivi,
-    spesso visibilmente più piccolo/sottile di `✕` allo stesso font-size
-    anche dopo aver provato a compensare con `text-lg`; un SVG con
-    `width`/`height` espliciti garantisce dimensione identica a prescindere
-    dal dispositivo) nella riga del titolo in `SeriesDetail.jsx`,
+  - **Icone in stile unico**: `SearchIcon.jsx`, `RefreshIcon.jsx`,
+    `CloseIcon.jsx` e `ShareIcon.jsx` condividono deliberatamente la stessa
+    "famiglia" — `viewBox="0 0 24 24"`, `stroke="currentColor"`,
+    `strokeWidth="2"`, `strokeLinecap="round"` — invece di mischiare SVG
+    disegnate a mano con caratteri Unicode testuali (`↻`, `✕`) come nelle
+    versioni precedenti: da un lato quei glifi rendono in modo incoerente
+    tra i font dei dispositivi (spesso visibilmente più piccoli/sottili di
+    altre icone allo stesso font-size, anche dopo aver provato a compensare
+    con `text-lg`), dall'altro anche mettendo a posto le dimensioni un
+    glifo di testo e una SVG disegnata a mano restano stilisticamente
+    diversi l'uno dall'altra (spessore del tratto, stile). Un'unica libreria
+    di icone SVG elimina entrambi i problemi in una volta. `RefreshIcon.jsx`
+    è stato inoltre ridisegnato: non più un singolo arco a 270° con una
+    freccia (asimmetrico, poco leggibile a 18px), ma il classico refresh a
+    due frecce circolari opposte (`refresh-cw`), più bilanciato e
+    immediatamente riconoscibile. `CloseIcon.jsx` sostituisce **ogni**
+    occorrenza del carattere `✕` nell'app (bottone di chiusura di `Modal`,
+    bottone elimina di `SeriesDetail`, bottoni "cancella" nelle barre di
+    ricerca, rimozione riga stagione in `AddSeriesModal`) — stessa azione
+    "X" ovunque appaia, stesso componente, mai duplicata come glifo diverso
+    in un punto e SVG in un altro. `SearchIcon.jsx` resta invariata (era già
+    nella stessa famiglia). Bottone "Aggiorna da TMDB" nella riga del titolo
+    in `SeriesDetail.jsx`,
     visibile solo per `series.source === 'tmdb'` (`refreshFromTmdb` in
     `VaultContext.jsx`); ruota (`animate-spin`) mentre è in corso, eventuale
     errore mostrato come riga di testo sotto il titolo. Ri-scarica **solo**
@@ -387,24 +403,42 @@ dal codice reale è peggio che non averla.
   delle serie sotto. Ogni riga di filtri/ordinamento che rischia di non
   entrare su schermi stretti deve seguire lo stesso pattern (scroll, non
   wrap), non introdurne di nuovi.
+- **Filtro di stato e ordinamento in `Home.jsx` vivono nell'URL**
+  (`?status=...&sort=...`, dopo l'hash di `HashRouter`, tramite
+  `useSearchParams`) invece che in `useState` locale: così una vista
+  specifica (es. "In corso" ordinato per Valutazione) è salvabile nei
+  preferiti/condivisibile e si ripresenta identica alla riapertura del
+  link. Un valore mancante o sconosciuto nell'URL (parametro assente,
+  digitato a mano, o non più valido) ricade sul default (`all`/`updated`)
+  invece di mostrare una libreria vuota o rompere l'ordinamento — i valori
+  ammessi sono verificati contro le chiavi note (`STATUS_KEYS`/
+  `SORT_KEYS` in `Home.jsx`) prima dell'uso.
 - **Layout `SeriesDetail.jsx`**: titolo, pillole di stato, barra di
   progresso (+ episodi visti/tempo rimanente), link, Wikipedia restano
   nella colonna stretta accanto al poster (l'header "di identità" della
-  serie) — sono compatti e ci stanno bene. "Aggiorna da TMDB" ed "Elimina
-  serie" sono bottoni icona nella **stessa riga del titolo**, allineati a
-  destra (non righe di testo separate: con due sole azioni icona ci sta
-  bene condividere la riga con l'`<h1>`) — entrambi `h-8 w-8` con
-  `flex items-center justify-center`, così l'area cliccabile è identica a
-  prescindere dal glifo. "Aggiorna" usa `RefreshIcon.jsx` (SVG 18×18px con
-  `width`/`height` espliciti) invece del carattere `↻`: quel glifo Unicode
-  rendeva in modo incoerente tra i font dei dispositivi (spesso
-  visibilmente più piccolo/sottile di `✕` allo stesso font-size), un
-  problema che nessuna classe di dimensione testuale (`text-lg` ecc.)
-  risolveva in modo affidabile — un'icona SVG con dimensioni esplicite in
-  pixel elimina la dipendenza dal rendering dei font. Entrambi hanno stato hover (`hover:bg-surface-hover`
+  serie) — sono compatti e ci stanno bene. "Condividi", "Aggiorna da TMDB"
+  ed "Elimina serie" sono bottoni icona nella **stessa riga del titolo**,
+  allineati a destra in quest'ordine (dal meno al più distruttivo — non
+  righe di testo separate: con azioni icona ci sta bene condividere la
+  riga con l'`<h1>`) — tutti `h-8 w-8` con `flex items-center
+  justify-center`, così l'area cliccabile è identica a prescindere
+  dall'icona. Tutte e tre usano `ShareIcon.jsx`/`RefreshIcon.jsx`/
+  `CloseIcon.jsx` (stessa famiglia di icone SVG, vedi sopra) — mai testo
+  Unicode. Tutti e tre hanno stato hover (`hover:bg-surface-hover`
   + colore, `hover:text-accent`/`hover:text-danger`) e stato `active` uguale
   allo hover, perché su mobile l'hover non scatta mai (nessun puntatore) e
   senza un `active` esplicito il tocco non darebbe nessun feedback visivo.
+  - **Condividi**: `navigator.share({ title, url })` con l'URL della
+    pagina corrente (deep link diretto alla serie, grazie a `HashRouter`)
+    quando l'API Web Share è disponibile (mobile, alcuni browser
+    desktop) — apre lo share sheet nativo del sistema operativo. Se non
+    disponibile (la maggior parte dei browser desktop), fallback a
+    `navigator.clipboard.writeText(url)` con una riga di conferma
+    temporanea ("Link copiato negli appunti", 2s, stesso punto sotto il
+    titolo dell'eventuale errore di refresh) — o un messaggio di errore se
+    anche la clipboard fallisce (permessi negati, contesto non sicuro).
+    Non condivide altro (né l'intera libreria né un riassunto testuale):
+    solo il link diretto alla serie aperta.
   "Giorni di visione" e
   "Valutazione + grafico" sono invece sezioni proprie a piena larghezza
   sotto l'header (card `rounded-2xl border border-border bg-surface p-4`),
@@ -425,24 +459,29 @@ dal codice reale è peggio che non averla.
   - **Eliminazione serie**: conferma tramite modale (`ConfirmDeleteModal`,
     riusa `Modal`) — mai `window.confirm()` nativo, che non segue lo stile
     dell'app ed è più rischioso da confermare per errore con un bottone
-    icona piccolo come la ✕ del titolo.
-  - **Giorni di visione (`WatchDaysRow`)**: su mobile, `grid grid-cols-7`
-    (non più `flex flex-wrap` con bottoni a larghezza fissa `w-10`): una
-    `w-10` (40px) era stata tarata sul viewport a 412px usato per i test,
-    ma su un dispositivo reale con viewport CSS più stretto 7 bottoni da
-    40px+gap non ci stavano su una sola riga e andavano a capo su due — bug
-    reale segnalato dall'utente, non riprodotto nei test iniziali proprio
-    perché il viewport di prova combaciava per caso con la larghezza
-    ipotizzata. La griglia a 7 colonne divide invece la larghezza
-    **effettiva** disponibile in 7 frazioni uguali, garantendo una riga
-    sola su qualunque device reale. Da `sm` in su resta `flex flex-wrap` con
-    bottoni a larghezza fissa (`sm:w-28`), dove lo spazio non manca.
-    Etichetta dipendente dal
-    breakpoint (`WEEKDAYS` in `schedule.js` ha ora `shortLabel`/`fullLabel`
+    icona piccolo.
+  - **Giorni di visione (`WatchDaysRow`)**: `grid grid-cols-7`, **stessa
+    griglia a tutte le larghezze** (mobile e desktop), non solo sotto
+    `sm` — una versione precedente usava `grid-cols-7` solo su mobile e
+    tornava a `flex flex-wrap` con bottoni a larghezza fissa (`sm:w-28`)
+    da `sm` in su, assumendo che lì lo spazio non mancasse mai; bug reale
+    segnalato dall'utente controllando la pagina in modalità "sito
+    desktop" da telefono, dove il breakpoint `sm:` scattava ma il
+    contenitore reale (`max-w-3xl`) restava più stretto di quanto servisse
+    per 7 pillole da `sm:w-28` + gap, quindi andavano comunque a capo su
+    due righe — la stessa identica classe di bug della versione mobile,
+    solo spostata su un altro breakpoint. Usare `grid-cols-7` **ovunque**
+    (nessuna eccezione per-breakpoint) elimina la classe di bug alla
+    radice: la griglia divide sempre la larghezza **effettiva** del
+    contenitore in 7 frazioni uguali, quindi non esiste più una larghezza
+    di viewport per cui possa silenziosamente tornare a wrappare.
+    Etichetta comunque dipendente dal
+    breakpoint (`WEEKDAYS` in `schedule.js` ha `shortLabel`/`fullLabel`
     oltre a `label`): su mobile una sola lettera/due
-    (`shortLabel`: L, Ma, Me, G, V, S, D) per stare su una riga sola senza
-    andare a capo su due righe; da `sm` in su il nome completo del giorno
-    (`fullLabel`: Lunedì, Martedì, ...), perché lì lo spazio non manca. Il
+    (`shortLabel`: L, Ma, Me, G, V, S, D); da `sm` in su il nome completo
+    del giorno (`fullLabel`: Lunedì, Martedì, ...) — questo cambia solo il
+    testo dentro la pillola, mai la larghezza della colonna che lo
+    contiene. Il
     `label` a 3 lettere (Lun, Mar, ...) resta invariato ed è usato **solo**
     dall'intestazione a griglia fissa a 7 colonne del Calendario, non da
     questi bottoni.

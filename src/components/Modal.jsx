@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import CloseIcon from './CloseIcon'
 
 export default function Modal({ title, onClose, children, wide = false }) {
   // Always call the latest onClose without re-running the mount effect below
@@ -70,7 +71,7 @@ export default function Modal({ title, onClose, children, wide = false }) {
             aria-label="Chiudi"
             className="rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-text"
           >
-            ✕
+            <CloseIcon />
           </button>
         </div>
         {children}

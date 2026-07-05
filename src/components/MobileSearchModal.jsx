@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Modal from './Modal'
 import { useVault } from '../store/VaultContext'
 import { filterSeriesByTitle } from '../lib/search'
+import CloseIcon from './CloseIcon'
 
 export default function MobileSearchModal({ onClose }) {
   const { series } = useVault()
@@ -31,7 +32,7 @@ export default function MobileSearchModal({ onClose }) {
             aria-label="Cancella ricerca"
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-text"
           >
-            ✕
+            <CloseIcon size={14} />
           </button>
         )}
       </div>
