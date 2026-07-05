@@ -3,6 +3,7 @@ const TABS = [
   { key: 'watching', label: 'In corso' },
   { key: 'planned', label: 'Da vedere' },
   { key: 'completed', label: 'Completate' },
+  { key: 'renewed', label: 'In attesa' },
   { key: 'dropped', label: 'Abbandonate' },
 ]
 

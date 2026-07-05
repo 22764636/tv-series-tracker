@@ -74,6 +74,23 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
 - **Dati serie**: ricerca tramite TMDB API (`src/lib/tmdb.js`) con fallback
   di inserimento manuale (tab "Manuale" in `AddSeriesModal`) per le serie di
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
+  - **Aggiorna da TMDB**: bottone per-serie in `SeriesDetail.jsx`, visibile
+    solo per `series.source === 'tmdb'` (`refreshFromTmdb` in
+    `VaultContext.jsx`). Ri-scarica **solo** titolo/poster/stagioni/flag
+    `ongoing` da TMDB — non tocca mai `watched`/`status`/`rating`/`link`/
+    `watchDays`. Unica eccezione deliberata: se il refresh rivela episodi
+    nuovi rispetto a prima su una serie il cui stato era "Completata" o "In
+    attesa di nuova stagione" (cioè tutto il conosciuto era già visto), lo
+    stato torna a "Da vedere" — così il normale meccanismo
+    planned→watching (vedi sotto) si riattiva da solo quando l'utente segna
+    visto il primo episodio nuovo, senza bisogno di logica ad-hoc separata.
+  - **Link Wikipedia EN/IT**: mostrati in `SeriesDetail.jsx`, calcolati al
+    volo dal titolo (`src/lib/wikipedia.js`, `wikipediaUrl(title, lang)`) —
+    **non salvati** da nessuna parte, nessuna chiamata API: è un link
+    "indovinato" diretto all'URL dell'articolo con quel titolo. Se
+    l'articolo non esiste con quell'esatto titolo, la pagina di ricerca di
+    Wikipedia stessa guida comunque l'utente. Non introdurre una vera
+    integrazione API Wikipedia per questo.
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
 - **Icona app**: cuori blu e viola su un divano, su sfondo quadrato
@@ -199,19 +216,41 @@ dal codice reale è peggio che non averla.
   minimo e coerente con quanto discusso.
 - Prima di un deploy reale, verificare che `npm run build` passi e che le
   env var richieste siano documentate in `README.md`.
-- **Lo stato "Completata" viene impostato automaticamente** non appena
-  l'ultimo episodio rimasto viene segnato visto (vedi `autoStatusUpdates` in
-  `VaultContext.jsx`, usato sia da `toggleEpisode` che da
-  `setSeasonWatched`). Non c'è invece auto-revert: se dopo il completamento
-  si smarca un episodio, lo stato resta "Completata" finché non viene
-  cambiato manualmente. Nota storica: una versione precedente di questa
-  regola diceva l'opposto (mai automatico) — quella era un'incomprensione,
-  corretta esplicitamente dall'utente; questa è la versione valida.
-- **La valutazione (`rating`, 1–10 con mezzi punti)** è visibile/modificabile
-  **solo** quando lo stato della serie è "Completata" (vedi `RatingRow` in
-  `SeriesDetail.jsx`): il controllo non viene proprio renderizzato per le
-  altre serie. Il valore non viene cancellato se lo stato cambia
-  successivamente (stesso comportamento non distruttivo del link).
+- **Lo stato "Completata" (o "In attesa di nuova stagione") viene impostato
+  automaticamente** non appena l'ultimo episodio rimasto viene segnato
+  visto (vedi `autoStatusUpdates` in `VaultContext.jsx`, usato sia da
+  `toggleEpisode` che da `setSeasonWatched`). Quale dei due stati dipende
+  dal flag `series.ongoing` (impostato da TMDB in base al campo `status`
+  della serie — "Ended"/"Canceled" → `false`, tutto il resto → `true`, vedi
+  `isOngoing` in `tmdb.js`): se la serie è ancora in corso di rinnovo
+  diventa "In attesa di nuova stagione", altrimenti "Completata". Le serie
+  manuali non hanno `ongoing` (nessuna fonte TMDB) e vanno sempre su
+  "Completata", comportamento invariato. Non c'è auto-revert quando si
+  smarca un episodio dopo il completamento: lo stato resta quello
+  automatico finché non viene cambiato manualmente (o finché un refresh
+  TMDB non rivela episodi nuovi, vedi sopra). Nota storica: una versione
+  precedente di questa regola diceva l'opposto (mai automatico) — quella
+  era un'incomprensione, corretta esplicitamente dall'utente; questa è la
+  versione valida.
+- **La valutazione è doppia**: un cuore blu 💙 e un cuore viola 💜, una
+  valutazione indipendente a testa (i due membri della coppia), non un
+  singolo numero condiviso. Ogni cuore accetta un decimale da 1 a 10 con
+  **fino a due cifre decimali** (`step="0.01"`, es. 7.88) — vedi
+  `HeartRating` in `SeriesDetail.jsx`. Il "voto finale" mostrato (card e
+  pagina serie) è la **media dei due**: se uno dei due non ha ancora
+  votato, la media mostrata è semplicemente il voto singolo presente,
+  aggiornata quando arriva anche il secondo (vedi `averageRating` in
+  `progress.js` — comportamento scelto esplicitamente dall'utente, non
+  dedurlo diversamente altrove). `formatRating()` arrotonda a 2 decimali e
+  toglie gli zeri finali per la visualizzazione (8 invece di 8.00, 7.5
+  invece di 7.50). Come prima, tutto questo è visibile/modificabile
+  **solo** quando lo stato della serie è "Completata" (non anche "In attesa
+  di nuova stagione" — sono stati distinti, la valutazione resta legata
+  solo al completamento vero e proprio) e il valore non viene cancellato se
+  lo stato cambia successivamente (stesso comportamento non distruttivo del
+  link). I due cuori come emoji sono una scelta esplicita dell'utente per
+  questo punto preciso — non riusarli altrove nell'app (vedi regola
+  no-emoji in cima al file).
 - **`StatusTabs` su mobile** scorre orizzontalmente (`overflow-x-auto` +
   classe di utilità `.no-scrollbar` in `index.css` per nascondere la
   scrollbar senza disabilitare lo scroll, bottoni con `shrink-0`) invece di

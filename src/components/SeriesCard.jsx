@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom'
 import ProgressBar from './ProgressBar'
 import StatusBadge from './StatusBadge'
-import { nextEpisode, progressRatio, totalEpisodes, watchedCount } from '../lib/progress'
+import { averageRating, formatRating, nextEpisode, progressRatio, totalEpisodes, watchedCount } from '../lib/progress'
 import { useVault } from '../store/VaultContext'
 
 export default function SeriesCard({ series }) {
   const { toggleEpisode } = useVault()
   const next = nextEpisode(series)
   const total = totalEpisodes(series)
+  const rating = averageRating(series)
 
   function markNextWatched(e) {
     e.preventDefault()
@@ -54,8 +55,8 @@ export default function SeriesCard({ series }) {
         </div>
         <div className="flex items-center justify-between gap-1.5">
           <StatusBadge status={series.status} />
-          {series.status === 'completed' && series.rating != null && (
-            <span className="text-xs text-muted">Voto {series.rating}/10</span>
+          {series.status === 'completed' && rating != null && (
+            <span className="text-xs text-muted">Voto {formatRating(rating)}/10</span>
           )}
         </div>
 

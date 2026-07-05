@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid'
 import { vaultRef, firebaseConfigured } from '../lib/firebase'
 import { episodeKey, totalEpisodes } from '../lib/progress'
 import { dateKey } from '../lib/schedule'
+import { getShowDetails, posterUrl } from '../lib/tmdb'
 
 const VaultContext = createContext(null)
 
@@ -20,12 +21,19 @@ function withUpdatedAt(id, extra = {}) {
 // - if the series is still "planned" (Da vedere), watching its first
 //   episode bumps it to "watching" (In corso).
 // - if this toggle brings the watched count to the full total, the series
-//   is marked "completed" (Completata) automatically. Un-watching an
-//   episode never reverts an already-completed series (no auto-revert).
+//   is marked either "completed" (Completata) or, if TMDB says the show is
+//   still ongoing (`series.ongoing`, see tmdb.js isOngoing), "renewed" (In
+//   attesa di nuova stagione) instead — there's more to watch eventually,
+//   it's just not out yet. Manual entries have no `ongoing` info and always
+//   go to "completed", same as before. Un-watching an episode never reverts
+//   an already-completed/renewed series (no auto-revert) — the one place
+//   status *does* move backwards automatically is refreshFromTmdb below,
+//   when a refresh reveals genuinely new unwatched episodes.
 function autoStatusUpdates(series, id, newWatched) {
   const total = totalEpisodes(series)
   if (total > 0 && Object.keys(newWatched).length >= total) {
-    return { [`series.${id}.status`]: 'completed' }
+    const status = series.ongoing ? 'renewed' : 'completed'
+    return { [`series.${id}.status`]: status }
   }
   if (series.status === 'planned') {
     return { [`series.${id}.status`]: 'watching' }
@@ -101,11 +109,40 @@ export function VaultProvider({ children }) {
     await updateDoc(vaultRef, withUpdatedAt(id, { [`series.${id}.watchDays`]: days }))
   }
 
-  async function setRating(id, rating) {
+  // Two independent ratings (blue heart / purple heart, one per person) —
+  // the displayed rating is their average (see averageRating in progress.js).
+  async function setRating(id, heart, rating) {
+    const field = heart === 'blue' ? 'ratingBlue' : 'ratingPurple'
     await updateDoc(
       vaultRef,
-      withUpdatedAt(id, { [`series.${id}.rating`]: rating == null ? deleteField() : rating }),
+      withUpdatedAt(id, { [`series.${id}.${field}`]: rating == null ? deleteField() : rating }),
     )
+  }
+
+  // TMDB-sourced only: re-fetches title/poster/seasons/ongoing-flag from
+  // TMDB and nothing else — never touches watched/status/rating/link/
+  // watchDays. Exception: if the refresh reveals episodes beyond what was
+  // known before on a series that's currently "completed" or "renewed" (all
+  // known episodes already watched), the status is reset to "planned" (Da
+  // vedere) so the normal planned->watching auto-promotion takes over again
+  // once the user marks the first new episode watched.
+  async function refreshFromTmdb(id) {
+    const current = seriesMap?.[id]
+    if (!current || current.source !== 'tmdb') return
+    const tmdbId = id.replace(/^tmdb-/, '')
+    const details = await getShowDetails(tmdbId)
+    const updates = withUpdatedAt(id, {
+      [`series.${id}.title`]: details.title,
+      [`series.${id}.posterPath`]: posterUrl(details.posterPath),
+      [`series.${id}.seasons`]: details.seasons,
+      [`series.${id}.ongoing`]: details.ongoing,
+    })
+    const newTotal = details.seasons.reduce((sum, s) => sum + s.episodeCount, 0)
+    const hadNewEpisodes = newTotal > totalEpisodes(current)
+    if (hadNewEpisodes && (current.status === 'completed' || current.status === 'renewed')) {
+      updates[`series.${id}.status`] = 'planned'
+    }
+    await updateDoc(vaultRef, updates)
   }
 
   // Watched episodes store the real date they were marked watched (not just
@@ -164,6 +201,7 @@ export function VaultProvider({ children }) {
     setLink,
     setWatchDays,
     setRating,
+    refreshFromTmdb,
     toggleEpisode,
     setSeasonWatched,
     setEpisodeWatchedDate,
