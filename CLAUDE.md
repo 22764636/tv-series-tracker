@@ -102,20 +102,35 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
   - `public/favicon.svg` — solo i due cuori, usata per il tab del browser
     (`<link rel="icon">` in `index.html`).
   - `public/icon.svg` (+ `icon-192.png`/`icon-512.png` esportati dallo
-    stesso SVG per compatibilità PWA/Android) e `apple-touch-icon.png`
-    (180×180) — versione completa con divano, usata in `manifest.json` e
-    per l'icona iOS "aggiungi a Home". Se si rigenera l'icona, aggiornare
-    entrambe le varianti e ri-esportare i PNG (renderizzando l'SVG, non
-    ridisegnandoli a mano).
-  - **Trappola nota**: in `manifest.json`, `"purpose": "maskable"` (o `"any
-    maskable"`) sulle icone dice a Chrome/Android di dipingere sempre uno
-    sfondo pieno dietro l'icona per adattarla alle maschere adattive di
-    sistema, **anche se il PNG sorgente ha sfondo trasparente** — non è un
-    bug del PNG, è il comportamento previsto di quel valore. Le nostre
-    icone PWA hanno sfondo trasparente intenzionale: usare solo
-    `"purpose": "any"`. Nota separata: `apple-touch-icon.png` (iOS) non può
-    mai essere trasparente, è una limitazione della piattaforma, non
-    risolvibile da manifest/config.
+    stesso SVG per compatibilità PWA/Android, sfondo **trasparente**
+    intenzionale) e `apple-touch-icon.png` (180×180, sfondo pieno perché
+    iOS non supporta trasparenza) — versione completa con divano, usata in
+    `manifest.json` e per l'icona iOS "aggiungi a Home". Se si rigenera
+    l'icona, aggiornare entrambe le varianti e ri-esportare i PNG
+    (renderizzando l'SVG, non ridisegnandoli a mano).
+  - **Icona maskable separata** (`public/icon-maskable.svg` →
+    `icon-maskable-192.png`/`icon-maskable-512.png`, `"purpose": "maskable"`
+    in `manifest.json`, entry **separata** dagli icon "any" sopra — mai
+    `"purpose": "any maskable"` sulla stessa entry, Chrome lo segnala come
+    problema in DevTools): su Android 8+ ogni app usa un'icona adattiva che
+    richiede uno sfondo **opaco**; senza una variante maskable, Chrome/
+    Android impacchetta l'icona "any" (trasparente) dentro un riquadro
+    bianco per soddisfare comunque quel requisito — non è un bug nostro,
+    è documentato su web.dev. La variante maskable risolve il riquadro
+    bianco fornendo direttamente uno sfondo `accent-solid` pieno, ma
+    **richiede necessariamente la rinuncia alla trasparenza per quella
+    variante** (scelta esplicita dell'utente: preferita al riquadro
+    bianco). Contenuto (divano+cuori) scalato all'85% e centrato rispetto
+    a `icon.svg`, per stare dentro la "safe zone" circolare (~80% di
+    diametro) che i launcher Android possono ritagliare — senza questo
+    margine gli angoli del divano uscirebbero leggermente dal cerchio su
+    maschere circolari aggressive.
+  - **Nota Firefox Android**: "Aggiungi a schermata Home" da Firefox può
+    ignorare del tutto icona/nome del manifest e mostrare l'icona
+    generica del robottino Android — bug noto e ricorrente di Firefox
+    (Bugzilla #1440661, #1234558), non risolvibile lato nostro
+    manifest/codice. Non provare a "correggerlo" di nuovo: non è un
+    problema della nostra configurazione.
 - **Calendario** (`src/pages/Calendar.jsx` + `src/lib/schedule.js`), griglia
   mensile (lun-dom, navigazione libera avanti/indietro):
   - Ogni serie ha un campo opzionale `watchDays` (giorni della settimana in
