@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import AddSeriesModal from './components/AddSeriesModal'
+import MobileSearchModal from './components/MobileSearchModal'
+import SearchIcon from './components/SearchIcon'
 import Home from './pages/Home'
 import SeriesDetail from './pages/SeriesDetail'
 import Calendar from './pages/Calendar'
@@ -10,6 +12,7 @@ import { VaultProvider, useVault } from './store/VaultContext'
 function AppShell() {
   const { ready, error } = useVault()
   const [showAdd, setShowAdd] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
 
   return (
     <div className="min-h-svh">
@@ -32,6 +35,17 @@ function AppShell() {
       )}
 
       {showAdd && <AddSeriesModal onClose={() => setShowAdd(false)} />}
+
+      {/* Mobile-only search trigger: lives in the shell (not Home) so it's
+          available on every page, matching desktop's always-on header search. */}
+      <button
+        onClick={() => setShowSearch(true)}
+        aria-label="Cerca serie"
+        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent-solid text-white shadow-lg transition-colors hover:bg-accent-solid-hover sm:hidden"
+      >
+        <SearchIcon />
+      </button>
+      {showSearch && <MobileSearchModal onClose={() => setShowSearch(false)} />}
     </div>
   )
 }

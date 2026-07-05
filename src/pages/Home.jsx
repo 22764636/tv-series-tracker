@@ -3,9 +3,7 @@ import { useVault } from '../store/VaultContext'
 import SeriesCard from '../components/SeriesCard'
 import StatusTabs from '../components/StatusTabs'
 import EmptyState from '../components/EmptyState'
-import MobileSearchModal from '../components/MobileSearchModal'
-import SearchIcon from '../components/SearchIcon'
-import { progressRatio } from '../lib/progress'
+import { averageRating, progressRatio } from '../lib/progress'
 
 const SORT_OPTIONS = [
   { key: 'updated', label: 'Ultimo aggiornamento' },
@@ -19,8 +17,13 @@ function sortSeries(list, sortKey) {
   switch (sortKey) {
     case 'title':
       return sorted.sort((a, b) => a.title.localeCompare(b.title))
-    case 'rating':
-      return sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1))
+    case 'rating': {
+      // Unrated series (averageRating() null) always sort after every rated
+      // one, never interleaved — -Infinity guarantees that regardless of
+      // the 1-10 scale rated series use.
+      const ratingOf = (s) => averageRating(s) ?? -Infinity
+      return sorted.sort((a, b) => ratingOf(b) - ratingOf(a))
+    }
     case 'progress':
       return sorted.sort((a, b) => progressRatio(b) - progressRatio(a))
     case 'updated':
@@ -33,7 +36,6 @@ export default function Home() {
   const { series } = useVault()
   const [tab, setTab] = useState('all')
   const [sortKey, setSortKey] = useState('updated')
-  const [showSearch, setShowSearch] = useState(false)
 
   const filtered = useMemo(() => {
     const base = tab === 'all' ? series : series.filter((s) => s.status === tab)
@@ -77,16 +79,6 @@ export default function Home() {
           ))}
         </div>
       )}
-
-      <button
-        onClick={() => setShowSearch(true)}
-        aria-label="Cerca serie"
-        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent-solid text-white shadow-lg transition-colors hover:bg-accent-solid-hover sm:hidden"
-      >
-        <SearchIcon />
-      </button>
-
-      {showSearch && <MobileSearchModal onClose={() => setShowSearch(false)} />}
     </div>
   )
 }

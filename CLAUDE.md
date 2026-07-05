@@ -74,8 +74,13 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
 - **Dati serie**: ricerca tramite TMDB API (`src/lib/tmdb.js`) con fallback
   di inserimento manuale (tab "Manuale" in `AddSeriesModal`) per le serie di
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
-  - **Aggiorna da TMDB**: bottone icona (↻, carattere Unicode testuale come
-    `✕`/`←` altrove — non emoji) nella riga del titolo in `SeriesDetail.jsx`,
+  - **Aggiorna da TMDB**: bottone icona (`RefreshIcon.jsx`, SVG disegnata a
+    mano — non il carattere Unicode `↻` usato in una versione precedente:
+    quel glifo rende in modo incoerente tra i font dei diversi dispositivi,
+    spesso visibilmente più piccolo/sottile di `✕` allo stesso font-size
+    anche dopo aver provato a compensare con `text-lg`; un SVG con
+    `width`/`height` espliciti garantisce dimensione identica a prescindere
+    dal dispositivo) nella riga del titolo in `SeriesDetail.jsx`,
     visibile solo per `series.source === 'tmdb'` (`refreshFromTmdb` in
     `VaultContext.jsx`); ruota (`animate-spin`) mentre è in corso, eventuale
     errore mostrato come riga di testo sotto il titolo. Ri-scarica **solo**
@@ -295,6 +300,12 @@ dal codice reale è peggio che non averla.
     due non ha ancora un totale, la media mostrata è semplicemente quello
     presente. `formatRating()` arrotonda a 2 decimali e toglie gli zeri
     finali per la visualizzazione (8 invece di 8.00, 7.5 invece di 7.50).
+    **L'ordinamento "Valutazione" in `Home.jsx` usa questo stesso
+    `averageRating(series)`** (con `?? -Infinity` per le serie senza voto,
+    così finiscono sempre tutte in fondo, mai mischiate tra quelle votate)
+    — bug reale corretto: leggeva ancora il vecchio campo `series.rating`,
+    rimosso quando il voto singolo è stato sostituito dai due cuori, quindi
+    era sempre `undefined` e l'ordinamento non funzionava più.
   - Il **voto totale** (riga "Valutazione: X/10" + i due `HeartRating` in
     cima alla pagina serie) resta visibile/modificabile **solo** quando lo
     stato della serie è "Completata" (non anche "In attesa di nuova
@@ -384,9 +395,13 @@ dal codice reale è peggio che non averla.
   destra (non righe di testo separate: con due sole azioni icona ci sta
   bene condividere la riga con l'`<h1>`) — entrambi `h-8 w-8` con
   `flex items-center justify-center`, così l'area cliccabile è identica a
-  prescindere dal glifo (↻ renderizza visivamente più piccolo di ✕ allo
-  stesso font-size, quindi ↻ usa `text-lg` contro il `text-base` di ✕ per
-  bilanciarli a vista). Entrambi hanno stato hover (`hover:bg-surface-hover`
+  prescindere dal glifo. "Aggiorna" usa `RefreshIcon.jsx` (SVG 18×18px con
+  `width`/`height` espliciti) invece del carattere `↻`: quel glifo Unicode
+  rendeva in modo incoerente tra i font dei dispositivi (spesso
+  visibilmente più piccolo/sottile di `✕` allo stesso font-size), un
+  problema che nessuna classe di dimensione testuale (`text-lg` ecc.)
+  risolveva in modo affidabile — un'icona SVG con dimensioni esplicite in
+  pixel elimina la dipendenza dal rendering dei font. Entrambi hanno stato hover (`hover:bg-surface-hover`
   + colore, `hover:text-accent`/`hover:text-danger`) e stato `active` uguale
   allo hover, perché su mobile l'hover non scatta mai (nessun puntatore) e
   senza un `active` esplicito il tocco non darebbe nessun feedback visivo.
@@ -411,9 +426,18 @@ dal codice reale è peggio che non averla.
     riusa `Modal`) — mai `window.confirm()` nativo, che non segue lo stile
     dell'app ed è più rischioso da confermare per errore con un bottone
     icona piccolo come la ✕ del titolo.
-  - **Giorni di visione (`WatchDaysRow`)**: bottoni sempre della **stessa
-    larghezza** (`w-10 sm:w-28`, non più dimensionati dal contenuto) così la
-    riga resta allineata a prescindere dal giorno. Etichetta dipendente dal
+  - **Giorni di visione (`WatchDaysRow`)**: su mobile, `grid grid-cols-7`
+    (non più `flex flex-wrap` con bottoni a larghezza fissa `w-10`): una
+    `w-10` (40px) era stata tarata sul viewport a 412px usato per i test,
+    ma su un dispositivo reale con viewport CSS più stretto 7 bottoni da
+    40px+gap non ci stavano su una sola riga e andavano a capo su due — bug
+    reale segnalato dall'utente, non riprodotto nei test iniziali proprio
+    perché il viewport di prova combaciava per caso con la larghezza
+    ipotizzata. La griglia a 7 colonne divide invece la larghezza
+    **effettiva** disponibile in 7 frazioni uguali, garantendo una riga
+    sola su qualunque device reale. Da `sm` in su resta `flex flex-wrap` con
+    bottoni a larghezza fissa (`sm:w-28`), dove lo spazio non manca.
+    Etichetta dipendente dal
     breakpoint (`WEEKDAYS` in `schedule.js` ha ora `shortLabel`/`fullLabel`
     oltre a `label`): su mobile una sola lettera/due
     (`shortLabel`: L, Ma, Me, G, V, S, D) per stare su una riga sola senza
@@ -435,12 +459,43 @@ dal codice reale è peggio che non averla.
     scrivendo in un altro input/textarea/contenteditable); `Escape` svuota
     e toglie il focus, `Enter` seleziona il primo risultato.
   - **Mobile** (`src/components/MobileSearchModal.jsx` + pulsante flottante
-    in `src/pages/Home.jsx`, `fixed bottom-5 right-5`, solo su Libreria,
-    icona `SearchIcon.jsx` — SVG disegnata a mano, non emoji: non esiste un
-    buon simbolo Unicode non-emoji per una lente d'ingrandimento):
-    apre una modale con campo di ricerca + stessa lista risultati.
+    in `src/App.jsx` — non `src/pages/Home.jsx`: vive nello shell globale
+    apposta per restare visibile su **ogni** pagina (Libreria, Calendario,
+    dettaglio serie), non solo sulla Libreria come una versione precedente —
+    `fixed bottom-5 right-5`, icona `SearchIcon.jsx` — SVG disegnata a mano,
+    non emoji: non esiste un buon simbolo Unicode non-emoji per una lente
+    d'ingrandimento): apre una modale con campo di ricerca + stessa lista
+    risultati.
   - Entrambe le varianti hanno un bottone "cancella" (✕) dentro il campo,
     visibile solo quando c'è testo.
+- **Modali e tasto Back**: ogni modale condivide `src/components/Modal.jsx`,
+  che alla apertura fa un `history.pushState` e tratta un successivo
+  popstate (tasto Back del browser/Android, incluso il gesto swipe-back)
+  come una chiusura — così Back chiude la modale invece di navigare via
+  dalla pagina sotto o uscire dalla PWA. Fixato una volta sola qui, vale per
+  tutte (ricerca mobile, aggiungi serie, conferma eliminazione, ecc.), non
+  duplicare per singola modale. **Trappola nota (bug reale già capitato)**:
+  la versione precedente chiamava `history.back()` incondizionatamente
+  dentro il cleanup dell'effect quando la chiusura non veniva da Back (X,
+  click sull'overlay, Escape) — ma `history.back()` è asincrono (il
+  popstate risultante arriva in un task successivo), e React StrictMode in
+  sviluppo fa mount→cleanup→mount **sincrono** dello stesso effect: il
+  cleanup "fantasma" del primo mount chiamava `history.back()`, il cui
+  popstate arrivava poi in ritardo mentre il secondo mount (quello vero)
+  aveva già il suo listener attivo — quel listener lo scambiava per un vero
+  Back e chiudeva la modale un istante dopo l'apertura, prima ancora che
+  fosse visibile. Fix: **mai** chiamare `history.back()` da un cleanup.
+  Ogni chiusura non-Back (X, overlay, Escape) passa invece per
+  `closeViaHistory()`, che chiama esso stesso `history.back()` in risposta
+  diretta al click/tasto — il popstate risultante è l'**unico** posto che
+  chiama `onClose`; il cleanup dell'effect si limita a rimuovere il
+  listener, senza nessun effetto collaterale da cui possa nascere la stessa
+  race. Un ref (`pushedRef`, non variabile locale nella closure) traccia se
+  l'entry è già stata pushata, per restare corretto anche sotto il
+  doppio mount di StrictMode. **Nota**: il dropdown di `HeaderSearch.jsx`
+  (desktop) non passa da questo meccanismo — non è una modale a schermo
+  intero, si chiude con `Escape`/click fuori/selezione risultato, non con
+  Back.
 - **PWA, tasto back Android**: mitigazione nota per il frame vuoto grigio che
   Android può mostrare per un istante sulla home page prima che un secondo
   back chiuda l'app (vedi `useEffect` in `App.jsx`: se
