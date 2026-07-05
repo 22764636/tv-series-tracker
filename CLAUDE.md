@@ -302,10 +302,17 @@ dal codice reale è peggio che non averla.
   - **Grafico voti per episodio** (`src/components/RatingChart.jsx`, sotto
     il voto totale in `SeriesDetail.jsx`, solo se almeno un episodio ha un
     voto): grafico a linee responsive, senza libreria esterna (SVG
-    disegnato a mano con `viewBox`), un punto per episodio votato (S1E1,
-    S1E2, ...) con tre linee — 💙, 💜 e una linea tratteggiata "Media" in
-    grigio (`--color-muted`) perché è un valore derivato, non un terzo
-    voto. Crosshair + tooltip al passaggio del mouse/tocco (valori sempre
+    disegnato a mano con `viewBox`, `width: 100%` + `min-width` in px così
+    si allarga a riempire la card quando c'è spazio ma scorre
+    orizzontalmente invece di comprimersi quando gli episodi votati non ci
+    stanno), un punto per episodio votato (S1E1, S1E2, ...) con tre linee —
+    💙, 💜 e una linea tratteggiata "Media" in grigio (`--color-muted`)
+    perché è un valore derivato, non un terzo voto. Sopra al grafico, una
+    riga sempre visibile (non solo in hover) mostra i totali correnti —
+    "💙 X/10", "💜 X/10", "Media X/10" — passati come props
+    (`totalBlue`/`totalPurple`/`totalAverage`) calcolati dal chiamante con
+    gli helper di `progress.js`, mai ricalcolati dentro il componente.
+    Crosshair + tooltip al passaggio del mouse/tocco (valori sempre
     visibili anche senza hover nelle righe per-episodio sopra, che fanno da
     "vista tabellare"). **Colori**: `--chart-blue`/`--chart-purple` in
     `index.css`, deliberatamente separati dalla palette semantica dell'app
@@ -314,6 +321,38 @@ dal codice reale è peggio che non averla.
     `validate_palette.js` della skill dataviz per separazione CVD e
     contrasto contro `bg-surface`, sia chiaro che scuro. Non toccare questi
     due valori senza rivalidarli.
+- **Durata episodi e tempo rimanente**:
+  - `series.episodeDurations[SxEy]` (minuti). Per le serie TMDB, scaricata
+    automaticamente — `getEpisodeDurations` in `tmdb.js` fa una chiamata
+    per stagione (`/tv/{id}/season/{n}`, non inclusa nella chiamata
+    principale usata per titolo/poster/stagioni) sia all'aggiunta sia ad
+    ogni "Aggiorna da TMDB"; gli episodi non ancora andati in onda
+    (`runtime` nullo su TMDB) restano senza durata finché non lo
+    diventano. Per le serie manuali non esiste nessuna fonte automatica:
+    la durata si inserisce a mano per episodio (`setEpisodeDuration` in
+    `VaultContext.jsx`), disponibile **anche prima di segnare l'episodio
+    visto** (a differenza del voto, che richiede l'episodio già visto) —
+    serve a poter calcolare il tempo rimanente anche su episodi non ancora
+    guardati.
+  - **Tempo rimanente** (`remainingMinutes`/`formatDuration` in
+    `progress.js`): somma delle durate degli episodi **non visti** di cui
+    si conosce la durata — un episodio senza durata nota viene
+    semplicemente escluso dalla somma (mai contato come 0), quindi il
+    totale può sottostimare ma mai sovrastimare. Ricalcolato dal vivo ad
+    ogni render (mai salvato), esattamente come `progressRatio`. Mostrato
+    in due punti: il totale dell'intera serie accanto a "X/Y episodi
+    visti" nell'header, e uno scoped per singola stagione accanto
+    all'intestazione "Stagione N" — entrambi nascosti quando il valore è 0
+    (che sia perché non resta nulla da vedere o perché non si conosce
+    nessuna durata: in entrambi i casi nascondere è la scelta giusta, non
+    c'è bisogno di distinguerli).
+  - Riga per-episodio in `SeasonBlock`: mostra la durata (testo semplice
+    per le serie TMDB, editabile con lo stesso pattern edit/display/add
+    di `LinkRow` per le manuali) affiancata ai voti a cuore quando
+    l'episodio è visto. La riga compare per ogni episodio visto (voto) o,
+    per le serie manuali, per **ogni** episodio indipendentemente dal
+    visto (durata sempre editabile); per le serie TMDB un episodio non
+    visto compare solo se la sua durata è già nota.
 - **`StatusTabs` su mobile** scorre orizzontalmente (`overflow-x-auto` +
   classe di utilità `.no-scrollbar` in `index.css` per nascondere la
   scrollbar senza disabilitare lo scroll, bottoni con `shrink-0`) invece di
@@ -321,6 +360,18 @@ dal codice reale è peggio che non averla.
   delle serie sotto. Ogni riga di filtri/ordinamento che rischia di non
   entrare su schermi stretti deve seguire lo stesso pattern (scroll, non
   wrap), non introdurne di nuovi.
+- **Layout `SeriesDetail.jsx`**: solo titolo, pillole di stato, barra di
+  progresso (+ episodi visti/tempo rimanente), link, Wikipedia, "Aggiorna
+  da TMDB" ed "Elimina serie" restano nella colonna stretta accanto al
+  poster (l'header "di identità" della serie) — sono compatti e ci stanno
+  bene. "Giorni di visione" e "Valutazione + grafico" sono invece sezioni
+  proprie a piena larghezza sotto l'header (card
+  `rounded-2xl border border-border bg-surface p-4`), non più schiacciate
+  nella colonna stretta: sono le due sezioni "pesanti" (7 pillole, grafico
+  responsive) che avevano davvero bisogno di tutta la larghezza pagina.
+  Non spostare di nuovo tutto in un'unica colonna stretta accanto al
+  poster: è il motivo per cui la pagina risultava compressa e disordinata
+  prima di questa modifica.
 - **PWA, tasto back Android**: mitigazione nota per il frame vuoto grigio che
   Android può mostrare per un istante sulla home page prima che un secondo
   back chiuda l'app (vedi `useEffect` in `App.jsx`: se

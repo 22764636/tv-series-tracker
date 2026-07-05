@@ -12,6 +12,8 @@ import {
   averageRating,
   formatRating,
   episodeRatingChartData,
+  remainingMinutes,
+  formatDuration,
 } from '../lib/progress'
 import { WEEKDAYS } from '../lib/schedule'
 import { wikipediaUrl } from '../lib/wikipedia'
@@ -26,6 +28,7 @@ export default function SeriesDetail() {
     setWatchDays,
     setRating,
     setEpisodeRating,
+    setEpisodeDuration,
     setWikipediaLink,
     refreshFromTmdb,
     toggleEpisode,
@@ -48,6 +51,8 @@ export default function SeriesDetail() {
   const locked = series.status === 'dropped'
   const complete = progressRatio(series) === 1
   const chartData = episodeRatingChartData(series)
+  const remaining = remainingMinutes(series)
+  const showRatingSection = series.status === 'completed' || chartData.length > 0
 
   async function handleDelete() {
     if (!window.confirm(`Eliminare "${series.title}" dalla libreria?`)) return
@@ -102,6 +107,7 @@ export default function SeriesDetail() {
             <ProgressBar ratio={progressRatio(series)} />
             <p className="mt-1 text-sm text-muted">
               {watchedCount(series)}/{totalEpisodes(series)} episodi visti
+              {remaining > 0 && ` · ${formatDuration(remaining)} rimanenti`}
             </p>
           </div>
 
@@ -111,16 +117,6 @@ export default function SeriesDetail() {
             series={series}
             onSetWikipediaLink={(lang, url) => setWikipediaLink(series.id, lang, url)}
           />
-
-          <WatchDaysRow
-            series={series}
-            locked={locked}
-            onSetWatchDays={(days) => setWatchDays(series.id, days)}
-          />
-
-          <RatingRow series={series} onSetRating={(heart, rating) => setRating(series.id, heart, rating)} />
-
-          {chartData.length > 0 && <RatingChart data={chartData} />}
 
           {series.source === 'tmdb' && (
             <RefreshRow onRefresh={() => refreshFromTmdb(series.id)} />
@@ -133,6 +129,31 @@ export default function SeriesDetail() {
             Elimina serie
           </button>
         </div>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-4">
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <WatchDaysRow
+            series={series}
+            locked={locked}
+            onSetWatchDays={(days) => setWatchDays(series.id, days)}
+          />
+        </div>
+
+        {showRatingSection && (
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <RatingRow series={series} onSetRating={(heart, rating) => setRating(series.id, heart, rating)} />
+            {chartData.length > 0 && (
+              <RatingChart
+                data={chartData}
+                totalBlue={series.ratingBlue}
+                totalPurple={series.ratingPurple}
+                totalAverage={averageRating(series)}
+                className={series.status === 'completed' ? 'mt-4' : ''}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-8 flex flex-col gap-6">
@@ -155,6 +176,9 @@ export default function SeriesDetail() {
               onToggleSeason={setSeasonWatched}
               onSetEpisodeRating={(season, episode, heart, value) =>
                 setEpisodeRating(series.id, season, episode, heart, value)
+              }
+              onSetEpisodeDuration={(season, episode, minutes) =>
+                setEpisodeDuration(series.id, season, episode, minutes)
               }
             />
           ))}
@@ -471,15 +495,38 @@ function HeartRating({ label, value, onSave }) {
   )
 }
 
-function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason, onSetEpisodeRating }) {
+function SeasonBlock({
+  series,
+  season,
+  locked,
+  onToggleEpisode,
+  onToggleSeason,
+  onSetEpisodeRating,
+  onSetEpisodeDuration,
+}) {
   const episodes = Array.from({ length: season.episodeCount }, (_, i) => i + 1)
   const allWatched = episodes.every((ep) => series.watched?.[episodeKey(season.number, ep)])
-  const watchedEpisodes = episodes.filter((ep) => series.watched?.[episodeKey(season.number, ep)])
+  // A row shows for any watched episode (rating) and, for manual series,
+  // every episode (duration must be enterable before it's even watched, so
+  // remaining-time has something to sum) — TMDB episodes only get a row once
+  // watched or once a duration has actually been fetched for them.
+  const relevantEpisodes = episodes.filter((ep) => {
+    const key = episodeKey(season.number, ep)
+    const watched = Boolean(series.watched?.[key])
+    const hasDuration = series.episodeDurations?.[key] != null
+    return watched || series.source === 'manual' || hasDuration
+  })
+  const seasonRemaining = remainingMinutes(series, season.number)
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text">Stagione {season.number}</h2>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <h2 className="text-sm font-semibold text-text">Stagione {season.number}</h2>
+          {seasonRemaining > 0 && (
+            <span className="text-xs text-muted">{formatDuration(seasonRemaining)} rimanenti</span>
+          )}
+        </div>
         <button
           disabled={locked}
           onClick={() => onToggleSeason(series.id, season.number, season.episodeCount, !allWatched)}
@@ -513,10 +560,12 @@ function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason, 
         })}
       </div>
 
-      {watchedEpisodes.length > 0 && (
+      {relevantEpisodes.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5">
-          {watchedEpisodes.map((ep) => {
-            const rating = series.episodeRatings?.[episodeKey(season.number, ep)]
+          {relevantEpisodes.map((ep) => {
+            const key = episodeKey(season.number, ep)
+            const watched = Boolean(series.watched?.[key])
+            const rating = series.episodeRatings?.[key]
             return (
               <div
                 key={ep}
@@ -524,16 +573,28 @@ function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason, 
               >
                 <span className="text-muted">S{season.number}E{ep}</span>
                 <div className="flex items-center gap-3">
-                  <HeartRating
-                    label="💙"
-                    value={rating?.blue}
-                    onSave={(v) => onSetEpisodeRating(season.number, ep, 'blue', v)}
+                  <DurationField
+                    minutes={series.episodeDurations?.[key]}
+                    onSave={
+                      series.source === 'manual'
+                        ? (v) => onSetEpisodeDuration(season.number, ep, v)
+                        : null
+                    }
                   />
-                  <HeartRating
-                    label="💜"
-                    value={rating?.purple}
-                    onSave={(v) => onSetEpisodeRating(season.number, ep, 'purple', v)}
-                  />
+                  {watched && (
+                    <>
+                      <HeartRating
+                        label="💙"
+                        value={rating?.blue}
+                        onSave={(v) => onSetEpisodeRating(season.number, ep, 'blue', v)}
+                      />
+                      <HeartRating
+                        label="💜"
+                        value={rating?.purple}
+                        onSave={(v) => onSetEpisodeRating(season.number, ep, 'purple', v)}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             )
@@ -541,5 +602,66 @@ function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason, 
         </div>
       )}
     </div>
+  )
+}
+
+function DurationField({ minutes, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [input, setInput] = useState(minutes ?? '')
+
+  if (!onSave) {
+    return minutes != null ? <span className="text-xs text-muted">{minutes} min</span> : null
+  }
+
+  async function save(e) {
+    e.preventDefault()
+    if (input === '') await onSave(null)
+    else await onSave(Math.max(1, Math.round(Number(input))))
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={save} className="flex items-center gap-2 text-xs">
+        <input
+          autoFocus
+          type="number"
+          min="1"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="min"
+          className="w-16 rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text outline-none focus:border-accent"
+        />
+        <button type="submit" className="font-medium text-accent hover:underline">
+          Salva
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-muted hover:text-text">
+          Annulla
+        </button>
+      </form>
+    )
+  }
+
+  if (minutes != null) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs">
+        <span className="text-muted">{minutes} min</span>
+        <button
+          onClick={() => {
+            setInput(minutes)
+            setEditing(true)
+          }}
+          className="text-muted hover:text-text"
+        >
+          Modifica
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button onClick={() => setEditing(true)} className="text-xs text-accent hover:underline">
+      + Durata
+    </button>
   )
 }
