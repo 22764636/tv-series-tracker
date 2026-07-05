@@ -220,9 +220,54 @@
   <code class="class">RefreshRow</code> — a single <code class="class">text-sm text-accent hover:underline</code> button
   ("Aggiorna da TMDB" / "Aggiornamento..." while pending), shown only when <code class="class">series.source === 'tmdb'</code>.
   On error, an inline <code class="class">text-xs text-danger</code> message next to the button — no modal, no toast.
-  <code class="class">WikipediaRow</code> — two plain <code class="class">text-accent hover:underline</code> links,
-  "Wikipedia (EN)" / "Wikipedia (IT)", same row, computed from the title on every render (never stored).
+  <code class="class">WikipediaRow</code>/<code class="class">WikipediaLink</code> — "Wikipedia (EN)" / "Wikipedia (IT)" links,
+  defaulting to the computed guess (<code class="class">wikipediaUrl</code>, wikipedia.js) but overridable per series —
+  same edit/display pattern as <code class="class">LinkRow</code> (plain link + small "Modifica" text button, inline form
+  with <code class="class">Salva</code>/<code class="class">Annulla</code> when editing). Clearing an override falls back
+  to the computed guess rather than removing the link entirely.
 </p>
+
+<h2>Per-episode rating rows (SeasonBlock)</h2>
+<p class="lede">
+  Below each season's episode-button grid, one row per <em>watched</em> episode:
+  <code class="class">flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm</code>,
+  same row shell as the Calendario entry list. Episode label (<code class="class">text-muted</code>) on the left, the same
+  two <code class="class">HeartRating</code> widgets (💙/💜) on the right as the total rating — reused as-is, just wired to
+  <code class="class">setEpisodeRating</code> instead of <code class="class">setRating</code>. Available as soon as an
+  episode is watched, regardless of the series' own status (unlike the total rating, still gated to "Completata").
+</p>
+
+<h2>RatingChart (SeriesDetail)</h2>
+<p class="lede">
+  <code class="class">src/components/RatingChart.jsx</code> — dependency-free responsive SVG line chart, shown under the
+  total rating whenever at least one episode has a rating. One point per rated episode (x-axis label <code class="class">S1E1</code>,
+  <code class="class">S1E2</code>, ... skipping labels that would collide rather than ever overlapping them), three 2px
+  lines: 💙 and 💜 in <code class="class">var(--chart-blue)</code>/<code class="class">var(--chart-purple)</code>, plus a
+  dashed <code class="class">var(--color-muted)</code> "Media" line (the average is a derived value, not a third voter,
+  so it deliberately isn't a third categorical hue). Legend row above the chart (line-swatch + label) since it's
+  &ge;2 series. Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode —
+  every value it shows is also plainly visible in the per-episode rows above (that's this chart's "table view").
+  Horizontally scrolls (plain scrollbar, not <code class="class">.no-scrollbar</code>) once episodes no longer fit the
+  container at a comfortable point spacing.
+</p>
+<p class="lede">
+  <strong>Chart color tokens</strong> — <code class="class">--chart-blue</code>/<code class="class">--chart-purple</code>
+  in <code class="class">src/index.css</code>, intentionally separate from the semantic UI palette above: these need to
+  read as <em>identity</em> (person A vs. person B), not app state, and were validated as a categorical pair (CVD
+  separation + contrast against <code class="class">bg-surface</code>, light and dark) with the dataviz skill's
+  validator script. Don't repurpose them for anything else or swap the hex values without re-running that validation.
+</p>
+<div class="row" style="gap:16px; align-items:center">
+  <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted)">
+    <span style="display:inline-block; width:16px; height:2px; background:#2a78d6; border-radius:2px"></span>💙
+  </span>
+  <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted)">
+    <span style="display:inline-block; width:16px; height:2px; background:#6d28d9; border-radius:2px"></span>💜
+  </span>
+  <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted)">
+    <span style="display:inline-block; width:16px; height:2px; background:repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px)"></span>Media
+  </span>
+</div>
 
 <h2>Sort control (Home)</h2>
 <p class="lede">

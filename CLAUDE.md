@@ -84,12 +84,15 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     stato torna a "Da vedere" — così il normale meccanismo
     planned→watching (vedi sotto) si riattiva da solo quando l'utente segna
     visto il primo episodio nuovo, senza bisogno di logica ad-hoc separata.
-  - **Link Wikipedia EN/IT**: mostrati in `SeriesDetail.jsx`, calcolati al
-    volo dal titolo (`src/lib/wikipedia.js`, `wikipediaUrl(title, lang)`) —
-    **non salvati** da nessuna parte, nessuna chiamata API: è un link
-    "indovinato" diretto all'URL dell'articolo con quel titolo. Se
-    l'articolo non esiste con quell'esatto titolo, la pagina di ricerca di
-    Wikipedia stessa guida comunque l'utente. Non introdurre una vera
+  - **Link Wikipedia EN/IT**: mostrati in `SeriesDetail.jsx`, calcolati di
+    default dal titolo (`src/lib/wikipedia.js`, `wikipediaUrl(title, lang)`)
+    — nessuna chiamata API, è un link "indovinato" diretto all'URL
+    dell'articolo con quel titolo. **Modificabile/sovrascrivibile** per
+    singola serie (`series.wikipediaEn`/`wikipediaIt`, `setWikipediaLink` in
+    `VaultContext.jsx`) per i casi in cui il titolo indovinato punta
+    all'articolo sbagliato o a una pagina di disambiguazione — stesso
+    pattern edit/display di `LinkRow`. Cancellare l'override torna al link
+    calcolato, non lo rimuove del tutto. Non introdurre una vera
     integrazione API Wikipedia per questo.
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
@@ -117,14 +120,22 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
   mensile (lun-dom, navigazione libera avanti/indietro):
   - Ogni serie ha un campo opzionale `watchDays` (giorni della settimana in
     cui si prevede di guardarla).
-  - **Futuro** (da domani in poi): le date mostrate **non sono mai
-    salvate**, si ricalcolano ad ogni apertura della pagina da oggi +
-    `watchDays` + numero di episodi non ancora visti rimanenti
-    (`upcomingCalendarEntries`). Intenzionale: se si salta un giorno di
-    visione previsto, la serie non sparisce dal calendario, lo slot si
-    sposta semplicemente in avanti (il conteggio dipende dagli episodi
-    rimasti, non da una data fissa). Non persistere le occorrenze calcolate
-    né introdurre uno stato "saltato".
+  - **Futuro (oggi incluso)**: le date mostrate **non sono mai salvate**, si
+    ricalcolano ad ogni apertura della pagina da oggi + `watchDays` +
+    numero di episodi non ancora visti rimanenti
+    (`upcomingCalendarEntries`). La scansione include **oggi stesso**: una
+    serie il cui giorno di visione è oggi ma il cui episodio non è ancora
+    segnato visto deve comparire nella cella di oggi, non saltare
+    all'occorrenza successiva (altrimenti una serie con giorno di visione
+    solo la domenica, controllata proprio di domenica, sparirebbe per una
+    settimana intera). Intenzionale: se si salta un giorno di visione
+    previsto, la serie non sparisce dal calendario, lo slot si sposta
+    semplicemente in avanti (il conteggio dipende dagli episodi rimasti,
+    non da una data fissa). Non persistere le occorrenze calcolate né
+    introdurre uno stato "saltato". Nota storica: una versione precedente
+    escludeva deliberatamente oggi dalla proiezione ("comincia da domani") —
+    l'utente ha poi corretto esplicitamente questo comportamento perché
+    causava lo slittamento sopra descritto; questa è la versione valida.
   - **Passato/oggi**: mostra la cronologia reale di cosa è stato visto,
     presa dalla data effettiva salvata per ogni episodio (vedi sotto), non
     dal piano `watchDays`. La data di un episodio già visto è modificabile
@@ -235,22 +246,53 @@ dal codice reale è peggio che non averla.
 - **La valutazione è doppia**: un cuore blu 💙 e un cuore viola 💜, una
   valutazione indipendente a testa (i due membri della coppia), non un
   singolo numero condiviso. Ogni cuore accetta un decimale da 1 a 10 con
-  **fino a due cifre decimali** (`step="0.01"`, es. 7.88) — vedi
-  `HeartRating` in `SeriesDetail.jsx`. Il "voto finale" mostrato (card e
-  pagina serie) è la **media dei due**: se uno dei due non ha ancora
-  votato, la media mostrata è semplicemente il voto singolo presente,
-  aggiornata quando arriva anche il secondo (vedi `averageRating` in
-  `progress.js` — comportamento scelto esplicitamente dall'utente, non
-  dedurlo diversamente altrove). `formatRating()` arrotonda a 2 decimali e
-  toglie gli zeri finali per la visualizzazione (8 invece di 8.00, 7.5
-  invece di 7.50). Come prima, tutto questo è visibile/modificabile
-  **solo** quando lo stato della serie è "Completata" (non anche "In attesa
-  di nuova stagione" — sono stati distinti, la valutazione resta legata
-  solo al completamento vero e proprio) e il valore non viene cancellato se
-  lo stato cambia successivamente (stesso comportamento non distruttivo del
-  link). I due cuori come emoji sono una scelta esplicita dell'utente per
-  questo punto preciso — non riusarli altrove nell'app (vedi regola
-  no-emoji in cima al file).
+  **fino a due cifre decimali** (`step="0.01"`, es. 7.88). I due cuori come
+  emoji sono una scelta esplicita dell'utente per questo punto preciso —
+  non riusarli altrove nell'app (vedi regola no-emoji in cima al file).
+  - **Valutazione per episodio** (`series.episodeRatings[SxEy] = { blue?,
+    purple? }`, `setEpisodeRating` in `VaultContext.jsx`): votabile appena
+    l'episodio è segnato visto, **indipendentemente dallo stato della
+    serie** (non solo a "Completata" — scelta esplicita dell'utente, per
+    poter votare mentre si guarda). Righe per-episodio in `SeasonBlock`
+    (`SeriesDetail.jsx`), stesso componente `HeartRating` riusato sia lì che
+    per il voto totale.
+  - **Voto totale calcolato automaticamente**: `series.ratingBlue` /
+    `ratingPurple` sono la **media dei voti per episodio di quella persona**
+    (`aggregateHeartRating` in `progress.js`), ricalcolata e riscritta ad
+    ogni voto-episodio — **il calcolo automatico vince sempre** (scelta
+    esplicita dell'utente): se esiste anche un solo voto per episodio per
+    quel cuore, il totale è sempre quel calcolo, non un valore digitato a
+    mano. La modifica manuale del totale (`setRating`, stesso
+    `HeartRating`) resta utile **solo finché non esiste ancora nessun voto
+    per episodio** per quel cuore — non è un "override" persistente: al
+    primo voto-episodio di quel cuore, il calcolo lo sovrascrive.
+  - Il "voto finale" mostrato (card e pagina serie) resta la **media dei
+    due totali** (`averageRating` in `progress.js`, invariato): se uno dei
+    due non ha ancora un totale, la media mostrata è semplicemente quello
+    presente. `formatRating()` arrotonda a 2 decimali e toglie gli zeri
+    finali per la visualizzazione (8 invece di 8.00, 7.5 invece di 7.50).
+  - Il **voto totale** (riga "Valutazione: X/10" + i due `HeartRating` in
+    cima alla pagina serie) resta visibile/modificabile **solo** quando lo
+    stato della serie è "Completata" (non anche "In attesa di nuova
+    stagione") — questa parte è invariata rispetto a prima. Il voto **per
+    episodio**, invece, non ha questo vincolo (vedi sopra). Nessuno dei due
+    valori viene cancellato se lo stato cambia successivamente (stesso
+    comportamento non distruttivo del link).
+  - **Grafico voti per episodio** (`src/components/RatingChart.jsx`, sotto
+    il voto totale in `SeriesDetail.jsx`, solo se almeno un episodio ha un
+    voto): grafico a linee responsive, senza libreria esterna (SVG
+    disegnato a mano con `viewBox`), un punto per episodio votato (S1E1,
+    S1E2, ...) con tre linee — 💙, 💜 e una linea tratteggiata "Media" in
+    grigio (`--color-muted`) perché è un valore derivato, non un terzo
+    voto. Crosshair + tooltip al passaggio del mouse/tocco (valori sempre
+    visibili anche senza hover nelle righe per-episodio sopra, che fanno da
+    "vista tabellare"). **Colori**: `--chart-blue`/`--chart-purple` in
+    `index.css`, deliberatamente separati dalla palette semantica dell'app
+    (vedi tabella sotto) perché qui il colore deve portare *identità*
+    (persona A vs persona B), non stato — validati con lo script
+    `validate_palette.js` della skill dataviz per separazione CVD e
+    contrasto contro `bg-surface`, sia chiaro che scuro. Non toccare questi
+    due valori senza rivalidarli.
 - **`StatusTabs` su mobile** scorre orizzontalmente (`overflow-x-auto` +
   classe di utilità `.no-scrollbar` in `index.css` per nascondere la
   scrollbar senza disabilitare lo scroll, bottoni con `shrink-0`) invece di

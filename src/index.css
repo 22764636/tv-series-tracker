@@ -28,6 +28,16 @@
     Helvetica, Arial, sans-serif;
 }
 
+/* RatingChart series colors — deliberately separate from the semantic UI
+ * palette above: these two need to be *distinguishable as identity* (a CVD-safe
+ * categorical pair), not theme-adaptive accents. Validated with the dataviz
+ * skill's contrast/CVD checker against this app's own light/dark chart surface
+ * (bg-surface); do not swap for arbitrary hex without re-validating. */
+:root {
+  --chart-blue: #2a78d6;
+  --chart-purple: #6d28d9;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --color-bg: #0a0a0b;
@@ -43,6 +53,8 @@
     --color-success-soft: #062e22;
     --color-danger: #f87171;
     --color-danger-soft: #3a1414;
+    --chart-blue: #3987e5;
+    --chart-purple: #7c3aed;
   }
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
+import RatingChart from '../components/RatingChart'
 import {
   progressRatio,
   totalEpisodes,
@@ -10,6 +11,7 @@ import {
   STATUS_META,
   averageRating,
   formatRating,
+  episodeRatingChartData,
 } from '../lib/progress'
 import { WEEKDAYS } from '../lib/schedule'
 import { wikipediaUrl } from '../lib/wikipedia'
@@ -23,6 +25,8 @@ export default function SeriesDetail() {
     setLink,
     setWatchDays,
     setRating,
+    setEpisodeRating,
+    setWikipediaLink,
     refreshFromTmdb,
     toggleEpisode,
     setSeasonWatched,
@@ -43,6 +47,7 @@ export default function SeriesDetail() {
 
   const locked = series.status === 'dropped'
   const complete = progressRatio(series) === 1
+  const chartData = episodeRatingChartData(series)
 
   async function handleDelete() {
     if (!window.confirm(`Eliminare "${series.title}" dalla libreria?`)) return
@@ -102,7 +107,10 @@ export default function SeriesDetail() {
 
           <LinkRow series={series} onSetLink={(link) => setLink(series.id, link)} />
 
-          <WikipediaRow series={series} />
+          <WikipediaRow
+            series={series}
+            onSetWikipediaLink={(lang, url) => setWikipediaLink(series.id, lang, url)}
+          />
 
           <WatchDaysRow
             series={series}
@@ -111,6 +119,8 @@ export default function SeriesDetail() {
           />
 
           <RatingRow series={series} onSetRating={(heart, rating) => setRating(series.id, heart, rating)} />
+
+          {chartData.length > 0 && <RatingChart data={chartData} />}
 
           {series.source === 'tmdb' && (
             <RefreshRow onRefresh={() => refreshFromTmdb(series.id)} />
@@ -143,6 +153,9 @@ export default function SeriesDetail() {
               locked={locked}
               onToggleEpisode={toggleEpisode}
               onToggleSeason={setSeasonWatched}
+              onSetEpisodeRating={(season, episode, heart, value) =>
+                setEpisodeRating(series.id, season, episode, heart, value)
+              }
             />
           ))}
       </div>
@@ -218,29 +231,78 @@ function LinkRow({ series, onSetLink }) {
   )
 }
 
-// Direct guessed links, computed from the title on every render — never
-// stored, never fetched. If a series doesn't have a matching article,
-// Wikipedia's own "page doesn't exist" screen still gets the user close
-// enough via its built-in search suggestions.
-function WikipediaRow({ series }) {
+// Guessed by default from the title (wikipediaUrl) — never stored unless the
+// user overrides it, e.g. because the guessed URL lands on the wrong article
+// or a disambiguation page. Clearing an override goes back to the guess.
+function WikipediaRow({ series, onSetWikipediaLink }) {
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <a
-        href={wikipediaUrl(series.title, 'en')}
-        target="_blank"
-        rel="noreferrer"
-        className="text-accent hover:underline"
-      >
-        Wikipedia (EN)
+    <div className="flex flex-wrap items-center gap-3">
+      <WikipediaLink
+        label="Wikipedia (EN)"
+        value={series.wikipediaEn}
+        computed={wikipediaUrl(series.title, 'en')}
+        onSave={(url) => onSetWikipediaLink('en', url)}
+      />
+      <WikipediaLink
+        label="Wikipedia (IT)"
+        value={series.wikipediaIt}
+        computed={wikipediaUrl(series.title, 'it')}
+        onSave={(url) => onSetWikipediaLink('it', url)}
+      />
+    </div>
+  )
+}
+
+function WikipediaLink({ label, value, computed, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [input, setInput] = useState(value ?? computed)
+  const href = value ?? computed
+
+  async function save(e) {
+    e.preventDefault()
+    const trimmed = input.trim()
+    await onSave(trimmed === computed ? null : trimmed || null)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={save} className="flex items-center gap-2 text-sm">
+        <input
+          autoFocus
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="https://..."
+          className="w-full max-w-xs rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+        />
+        <button type="submit" className="text-xs font-medium text-accent hover:underline">
+          Salva
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="text-xs text-muted hover:text-text"
+        >
+          Annulla
+        </button>
+      </form>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <a href={href} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+        {label}
       </a>
-      <a
-        href={wikipediaUrl(series.title, 'it')}
-        target="_blank"
-        rel="noreferrer"
-        className="text-accent hover:underline"
+      <button
+        onClick={() => {
+          setInput(value ?? computed)
+          setEditing(true)
+        }}
+        className="text-xs text-muted hover:text-text"
       >
-        Wikipedia (IT)
-      </a>
+        Modifica
+      </button>
     </div>
   )
 }
@@ -409,9 +471,10 @@ function HeartRating({ label, value, onSave }) {
   )
 }
 
-function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason }) {
+function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason, onSetEpisodeRating }) {
   const episodes = Array.from({ length: season.episodeCount }, (_, i) => i + 1)
   const allWatched = episodes.every((ep) => series.watched?.[episodeKey(season.number, ep)])
+  const watchedEpisodes = episodes.filter((ep) => series.watched?.[episodeKey(season.number, ep)])
 
   return (
     <div>
@@ -449,6 +512,34 @@ function SeasonBlock({ series, season, locked, onToggleEpisode, onToggleSeason }
           )
         })}
       </div>
+
+      {watchedEpisodes.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          {watchedEpisodes.map((ep) => {
+            const rating = series.episodeRatings?.[episodeKey(season.number, ep)]
+            return (
+              <div
+                key={ep}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"
+              >
+                <span className="text-muted">S{season.number}E{ep}</span>
+                <div className="flex items-center gap-3">
+                  <HeartRating
+                    label="💙"
+                    value={rating?.blue}
+                    onSave={(v) => onSetEpisodeRating(season.number, ep, 'blue', v)}
+                  />
+                  <HeartRating
+                    label="💜"
+                    value={rating?.purple}
+                    onSave={(v) => onSetEpisodeRating(season.number, ep, 'purple', v)}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
