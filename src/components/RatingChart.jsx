@@ -39,11 +39,11 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
     return points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ')
   }
 
-  function handlePointerMove(e) {
+  function updateHoverFromClientX(clientX) {
     const svg = svgRef.current
     if (!svg) return
     const rect = svg.getBoundingClientRect()
-    const relX = ((e.clientX - rect.left) / rect.width) * width
+    const relX = ((clientX - rect.left) / rect.width) * width
     let nearest = 0
     let best = Infinity
     data.forEach((_, i) => {
@@ -54,6 +54,28 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
       }
     })
     setHoverIndex(nearest)
+  }
+
+  function handlePointerMove(e) {
+    updateHoverFromClientX(e.clientX)
+  }
+
+  // Belt-and-braces alongside the pointer handlers above: touch-originated
+  // pointer events aren't consistently delegated the same way mouse ones are
+  // (confirmed with Playwright's touch emulation — the native DOM event
+  // fires, but relying on pointerdown/pointermove alone missed it), so touch
+  // gets its own explicit handler reading straight from the Touch API.
+  function handleTouch(e) {
+    const touch = e.touches[0] ?? e.changedTouches[0]
+    if (touch) updateHoverFromClientX(touch.clientX)
+  }
+
+  // Lifting a finger fires pointerleave too (touch has no persistent hover
+  // state), which would otherwise immediately clear the tooltip we just set
+  // from the touch handlers above — only a real mouse leaving the chart
+  // should dismiss it.
+  function handlePointerLeave(e) {
+    if (e.pointerType !== 'touch') setHoverIndex(null)
   }
 
   // Label every episode if they fit with comfortable spacing, otherwise skip
@@ -94,9 +116,12 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
           ref={svgRef}
           viewBox={`0 0 ${width} ${HEIGHT}`}
           className="block"
-          style={{ width: '100%', minWidth: width, height: 'auto' }}
+          style={{ width: '100%', minWidth: width, height: 'auto', touchAction: 'pan-y' }}
+          onPointerDown={handlePointerMove}
           onPointerMove={handlePointerMove}
-          onPointerLeave={() => setHoverIndex(null)}
+          onPointerLeave={handlePointerLeave}
+          onTouchStart={handleTouch}
+          onTouchMove={handleTouch}
         >
           {Y_TICKS.map((t) => (
             <g key={t}>

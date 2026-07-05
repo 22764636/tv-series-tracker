@@ -170,13 +170,17 @@
 
 <h2>SeriesDetail page layout</h2>
 <p class="lede">
-  Two tiers. The <strong>header</strong> (poster + a narrow column beside it) holds only what's compact: title,
-  status pills, progress bar + "X/Y episodi visti" (+ "Z rimanenti" when known), link, Wikipedia EN/IT, "Aggiorna da
-  TMDB", "Elimina serie". Everything heavier — giorni di visione (7 pills) and valutazione + grafico — is instead its
-  own full-width section below the header, each wrapped in
-  <code class="class">rounded-2xl border border-border bg-surface p-4</code>, stacked with
-  <code class="class">flex flex-col gap-4</code>. Don't fold those two back into the narrow header column: that's what
-  made the page read as cramped and inconsistent with the full-width season/episode section further down.
+  Two tiers. The <strong>header</strong> (poster + a column beside it) holds only what's compact: title (with
+  "Aggiorna da TMDB"/"Elimina serie" as right-aligned icon buttons sharing the title's own row — see below), status
+  pills, progress bar + "X/Y episodi visti" (+ "Z rimanenti" when known), link, Wikipedia EN/IT. Everything heavier —
+  giorni di visione (7 pills) and valutazione + grafico — is instead its own full-width section below the header,
+  each wrapped in <code class="class">rounded-2xl border border-border bg-surface p-4</code>, stacked with
+  <code class="class">flex flex-col gap-4</code>. Don't fold those two back into the header column: that's what made
+  the page read as cramped and inconsistent with the full-width season/episode section further down.
+  <strong>Below <code class="class">sm</code></strong>, the header itself stacks vertically
+  (<code class="class">flex-col items-center</code> → <code class="class">sm:flex-row sm:items-start</code>): poster
+  centered on top, info column full width underneath — always-side-by-side broke down at larger accessibility text
+  sizes, wrapping every row inside an already-narrow column into ragged multi-line spacing.
 </p>
 
 <h2>Episode buttons (SeriesDetail)</h2>
@@ -226,16 +230,71 @@
   opposite the badge, instead of just trailing it.
 </p>
 
-<h2>Aggiorna da TMDB / Wikipedia links (SeriesDetail)</h2>
+<h2>Title-row icon buttons (Aggiorna da TMDB / Elimina serie)</h2>
 <p class="lede">
-  <code class="class">RefreshRow</code> — a single <code class="class">text-sm text-accent hover:underline</code> button
-  ("Aggiorna da TMDB" / "Aggiornamento..." while pending), shown only when <code class="class">series.source === 'tmdb'</code>.
-  On error, an inline <code class="class">text-xs text-danger</code> message next to the button — no modal, no toast.
-  <code class="class">WikipediaRow</code>/<code class="class">WikipediaLink</code> — "Wikipedia (EN)" / "Wikipedia (IT)" links,
-  defaulting to the computed guess (<code class="class">wikipediaUrl</code>, wikipedia.js) but overridable per series —
-  same edit/display pattern as <code class="class">LinkRow</code> (plain link + small "Modifica" text button, inline form
-  with <code class="class">Salva</code>/<code class="class">Annulla</code> when editing). Clearing an override falls back
-  to the computed guess rather than removing the link entirely.
+  Right-aligned in the same flex row as the <code class="class">&lt;h1&gt;</code> title
+  (<code class="class">flex items-start justify-between</code>): <code class="class">rounded-full p-1.5 text-muted
+  hover:bg-surface-hover</code>, refresh hovering to <code class="class">text-accent</code> and delete to
+  <code class="class">text-danger</code>. Icons are plain Unicode text symbols, not emoji — <code class="class">↻</code>
+  for refresh, <code class="class">✕</code> for delete (same character as the Modal close button) — there's no
+  non-emoji Unicode magnifying glass, which is why the search icon below is an inline SVG instead. Refresh
+  (<code class="class">series.source === 'tmdb'</code> only) spins (<code class="class">animate-spin</code>) while
+  pending; an error renders as a <code class="class">text-xs text-danger</code> line just under the title row, no
+  modal/toast. Delete opens <code class="class">ConfirmDeleteModal</code> (below) instead of acting immediately.
+</p>
+<div class="row" style="align-items:center; gap:6px">
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">↻</button>
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">✕</button>
+</div>
+
+<h2>Wikipedia links (SeriesDetail)</h2>
+<p class="lede">
+  <code class="class">WikipediaRow</code>/<code class="class">WikipediaLink</code> — "Wikipedia (EN)" / "Wikipedia (IT)"
+  links, defaulting to the computed guess (<code class="class">wikipediaUrl</code>, wikipedia.js) but overridable per
+  series — same edit/display pattern as <code class="class">LinkRow</code> (plain link + small "Modifica" text button,
+  inline form with <code class="class">Salva</code>/<code class="class">Annulla</code> when editing). Clearing an
+  override falls back to the computed guess rather than removing the link entirely.
+</p>
+
+<h2>Confirm-delete modal</h2>
+<p class="lede">
+  <code class="class">ConfirmDeleteModal</code> reuses <code class="class">Modal</code> — never a native
+  <code class="class">window.confirm()</code>, which looks out of place and is too easy to accept by reflex compared to
+  a styled dialog with the destructive action visually distinct. Body: one line of
+  <code class="class">text-sm text-muted</code> explanatory text naming the series being deleted. Footer:
+  <code class="class">flex justify-end gap-2</code> — "Annulla" (<code class="class">rounded-full border
+  border-border px-4 py-2 text-sm font-medium text-text hover:bg-surface-hover</code>) then "Elimina"
+  (<code class="class">rounded-full bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90</code>, the
+  one place a solid danger-filled button is used, deliberately not <code class="class">danger-soft</code>, since this
+  is the single confirm step for an irreversible action).
+</p>
+
+<h2>Search (desktop header + mobile FAB)</h2>
+<p class="lede">
+  Same filter logic everywhere (<code class="class">filterSeriesByTitle</code>, src/lib/search.js — plain
+  case-insensitive substring on the title, capped to 8 results), two different surfaces per platform:
+</p>
+<p class="lede">
+  <strong>Desktop</strong> (<code class="class">HeaderSearch.jsx</code>, <code class="class">hidden sm:block</code>):
+  inline <code class="class">rounded-full border border-border bg-surface</code> input in the header, widening
+  slightly on focus. A dropdown (<code class="class">absolute ... rounded-xl border border-border bg-surface
+  shadow-xl</code>) lists matches as poster-thumbnail + title rows, same shape as AddSeriesModal's search results.
+  <strong>Disabled</strong> (grayed, not focusable) whenever the current route is a series detail page — searching
+  away from the series you're already looking at doesn't make sense there. Keyboard shortcut <code class="class">/</code>
+  focuses it (ignored while typing in any other field, or while disabled); <code class="class">Escape</code> clears
+  and blurs, <code class="class">Enter</code> jumps to the first result.
+</p>
+<p class="lede">
+  <strong>Mobile</strong> (<code class="class">MobileSearchModal.jsx</code> + a floating button in
+  <code class="class">Home.jsx</code>, <code class="class">sm:hidden</code>): a
+  <code class="class">fixed bottom-5 right-5</code> circular <code class="class">bg-accent-solid</code> button, shown
+  only on the Libreria page, carrying <code class="class">SearchIcon.jsx</code> (a small hand-drawn SVG magnifier —
+  not emoji, see above). Tapping it opens a <code class="class">Modal</code> with the same search input + result list
+  pattern as the desktop dropdown, just full-width inside the modal instead of an anchored popover.
+</p>
+<p class="lede">
+  Both variants get a clear (✕) button inside the input, shown only once there's text, positioned
+  <code class="class">absolute right-2(.5) top-1/2 -translate-y-1/2</code>.
 </p>
 
 <h2>Per-episode rating + duration rows (SeasonBlock)</h2>
@@ -273,6 +332,15 @@
   (<code class="class">overflow-x-auto</code> wrapper, plain scrollbar, not <code class="class">.no-scrollbar</code>)
   once episodes genuinely no longer fit at a comfortable point spacing. Don't pin it to a fixed pixel width — that's
   what made it look small on wide screens before.
+</p>
+<p class="lede">
+  <strong>Touch</strong> — <code class="class">onTouchStart</code>/<code class="class">onTouchMove</code> alongside the
+  pointer handlers, reading <code class="class">e.touches</code>/<code class="class">e.changedTouches</code> directly;
+  relying on <code class="class">onPointerDown</code>/<code class="class">onPointerMove</code> alone misses real touch
+  taps in practice. <code class="class">onPointerLeave</code> ignores <code class="class">pointerType === 'touch'</code>
+  — lifting a finger fires a pointerleave too, which would otherwise instantly clear the tooltip a tap just set;
+  only an actual mouse leaving the chart area should dismiss it. <code class="class">touch-action: pan-y</code> on the
+  SVG keeps vertical page scrolling working through the chart.
 </p>
 <p class="lede">
   <strong>Chart color tokens</strong> — <code class="class">--chart-blue</code>/<code class="class">--chart-purple</code>
