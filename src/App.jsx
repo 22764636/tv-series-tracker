@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import AddSeriesModal from './components/AddSeriesModal'
@@ -37,6 +37,17 @@ function AppShell() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Installed PWAs (standalone display) can hit the bottom of the browser
+    // history stack right on the home screen, which on Android shows a blank
+    // frame while the OS tears down the activity before the *next* back
+    // press actually closes it. Padding the stack with one extra entry on
+    // load gives the first back press something of ours to consume instead.
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      window.history.pushState(null, '', window.location.href)
+    }
+  }, [])
+
   return (
     <VaultProvider>
       <HashRouter>
