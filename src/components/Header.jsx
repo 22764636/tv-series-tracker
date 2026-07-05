@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import HeaderSearch from './HeaderSearch'
 
 export default function Header({ onAddSeries }) {
   return (
@@ -17,6 +18,7 @@ export default function Header({ onAddSeries }) {
           <Link to="/calendario" className="text-sm font-medium text-muted hover:text-text">
             Calendario
           </Link>
+          <HeaderSearch />
           {onAddSeries && (
             <button
               onClick={onAddSeries}

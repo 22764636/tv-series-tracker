@@ -3,6 +3,8 @@ import { useVault } from '../store/VaultContext'
 import SeriesCard from '../components/SeriesCard'
 import StatusTabs from '../components/StatusTabs'
 import EmptyState from '../components/EmptyState'
+import MobileSearchModal from '../components/MobileSearchModal'
+import SearchIcon from '../components/SearchIcon'
 import { progressRatio } from '../lib/progress'
 
 const SORT_OPTIONS = [
@@ -31,6 +33,7 @@ export default function Home() {
   const { series } = useVault()
   const [tab, setTab] = useState('all')
   const [sortKey, setSortKey] = useState('updated')
+  const [showSearch, setShowSearch] = useState(false)
 
   const filtered = useMemo(() => {
     const base = tab === 'all' ? series : series.filter((s) => s.status === tab)
@@ -74,6 +77,16 @@ export default function Home() {
           ))}
         </div>
       )}
+
+      <button
+        onClick={() => setShowSearch(true)}
+        aria-label="Cerca serie"
+        className="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent-solid text-white shadow-lg transition-colors hover:bg-accent-solid-hover sm:hidden"
+      >
+        <SearchIcon />
+      </button>
+
+      {showSearch && <MobileSearchModal onClose={() => setShowSearch(false)} />}
     </div>
   )
 }

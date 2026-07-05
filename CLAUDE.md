@@ -74,16 +74,19 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
 - **Dati serie**: ricerca tramite TMDB API (`src/lib/tmdb.js`) con fallback
   di inserimento manuale (tab "Manuale" in `AddSeriesModal`) per le serie di
   nicchia assenti su TMDB. Non rimuovere l'opzione manuale.
-  - **Aggiorna da TMDB**: bottone per-serie in `SeriesDetail.jsx`, visibile
-    solo per `series.source === 'tmdb'` (`refreshFromTmdb` in
-    `VaultContext.jsx`). Ri-scarica **solo** titolo/poster/stagioni/flag
-    `ongoing` da TMDB — non tocca mai `watched`/`status`/`rating`/`link`/
-    `watchDays`. Unica eccezione deliberata: se il refresh rivela episodi
-    nuovi rispetto a prima su una serie il cui stato era "Completata" o "In
-    attesa di nuova stagione" (cioè tutto il conosciuto era già visto), lo
-    stato torna a "Da vedere" — così il normale meccanismo
-    planned→watching (vedi sotto) si riattiva da solo quando l'utente segna
-    visto il primo episodio nuovo, senza bisogno di logica ad-hoc separata.
+  - **Aggiorna da TMDB**: bottone icona (↻, carattere Unicode testuale come
+    `✕`/`←` altrove — non emoji) nella riga del titolo in `SeriesDetail.jsx`,
+    visibile solo per `series.source === 'tmdb'` (`refreshFromTmdb` in
+    `VaultContext.jsx`); ruota (`animate-spin`) mentre è in corso, eventuale
+    errore mostrato come riga di testo sotto il titolo. Ri-scarica **solo**
+    titolo/poster/stagioni/flag `ongoing`/durate episodi da TMDB — non tocca
+    mai `watched`/`status`/`rating`/`link`/`watchDays`. Unica eccezione
+    deliberata: se il refresh rivela episodi nuovi rispetto a prima su una
+    serie il cui stato era "Completata" o "In attesa di nuova stagione"
+    (cioè tutto il conosciuto era già visto), lo stato torna a "Da vedere" —
+    così il normale meccanismo planned→watching (vedi sotto) si riattiva da
+    solo quando l'utente segna visto il primo episodio nuovo, senza bisogno
+    di logica ad-hoc separata.
   - **Link Wikipedia EN/IT**: mostrati in `SeriesDetail.jsx`, calcolati di
     default dal titolo (`src/lib/wikipedia.js`, `wikipediaUrl(title, lang)`)
     — nessuna chiamata API, è un link "indovinato" diretto all'URL
@@ -314,7 +317,20 @@ dal codice reale è peggio che non averla.
     gli helper di `progress.js`, mai ricalcolati dentro il componente.
     Crosshair + tooltip al passaggio del mouse/tocco (valori sempre
     visibili anche senza hover nelle righe per-episodio sopra, che fanno da
-    "vista tabellare"). **Colori**: `--chart-blue`/`--chart-purple` in
+    "vista tabellare"). **Supporto touch**: oltre a `onPointerDown`/
+    `onPointerMove` (mouse/pen), gestori dedicati `onTouchStart`/
+    `onTouchMove` che leggono `e.touches`/`e.changedTouches` direttamente —
+    verificato che affidarsi ai soli eventi pointer non basta: un tocco
+    reale genera comunque un evento nativo `pointerdown` con
+    `pointerType: "touch"`, ma senza un handler touch dedicato il
+    sollevamento del dito genera anche un `pointerleave` che cancella
+    subito il tooltip appena mostrato. Per questo `onPointerLeave` ignora
+    esplicitamente `pointerType === 'touch'` (solo un vero mouse che esce
+    dall'area deve nascondere il tooltip) — senza questo controllo il
+    tooltip touch lampeggia e sparisce invece di restare visibile fino al
+    tocco successivo. `touch-action: pan-y` sull'SVG lascia lo scroll
+    verticale della pagina intatto durante l'interazione. **Colori**:
+    `--chart-blue`/`--chart-purple` in
     `index.css`, deliberatamente separati dalla palette semantica dell'app
     (vedi tabella sotto) perché qui il colore deve portare *identità*
     (persona A vs persona B), non stato — validati con lo script
@@ -360,18 +376,52 @@ dal codice reale è peggio che non averla.
   delle serie sotto. Ogni riga di filtri/ordinamento che rischia di non
   entrare su schermi stretti deve seguire lo stesso pattern (scroll, non
   wrap), non introdurne di nuovi.
-- **Layout `SeriesDetail.jsx`**: solo titolo, pillole di stato, barra di
-  progresso (+ episodi visti/tempo rimanente), link, Wikipedia, "Aggiorna
-  da TMDB" ed "Elimina serie" restano nella colonna stretta accanto al
-  poster (l'header "di identità" della serie) — sono compatti e ci stanno
-  bene. "Giorni di visione" e "Valutazione + grafico" sono invece sezioni
-  proprie a piena larghezza sotto l'header (card
-  `rounded-2xl border border-border bg-surface p-4`), non più schiacciate
-  nella colonna stretta: sono le due sezioni "pesanti" (7 pillole, grafico
-  responsive) che avevano davvero bisogno di tutta la larghezza pagina.
-  Non spostare di nuovo tutto in un'unica colonna stretta accanto al
-  poster: è il motivo per cui la pagina risultava compressa e disordinata
-  prima di questa modifica.
+- **Layout `SeriesDetail.jsx`**: titolo, pillole di stato, barra di
+  progresso (+ episodi visti/tempo rimanente), link, Wikipedia restano
+  nella colonna stretta accanto al poster (l'header "di identità" della
+  serie) — sono compatti e ci stanno bene. "Aggiorna da TMDB" ed "Elimina
+  serie" sono bottoni icona nella **stessa riga del titolo**, allineati a
+  destra (non righe di testo separate: con due sole azioni icona ci sta
+  bene condividere la riga con l'`<h1>`). "Giorni di visione" e
+  "Valutazione + grafico" sono invece sezioni proprie a piena larghezza
+  sotto l'header (card `rounded-2xl border border-border bg-surface p-4`),
+  non più schiacciate nella colonna stretta: sono le due sezioni "pesanti"
+  (7 pillole, grafico responsive) che avevano davvero bisogno di tutta la
+  larghezza pagina. Non spostare di nuovo tutto in un'unica colonna
+  stretta accanto al poster: è il motivo per cui la pagina risultava
+  compressa e disordinata prima di questa modifica.
+  - **Sotto `sm`, poster e colonna info si impilano verticalmente**
+    (`flex-col items-center` → `sm:flex-row sm:items-start`), poster
+    centrato sopra, colonna info a piena larghezza sotto — non più sempre
+    affiancati. Con caratteri/accessibilità a dimensione maggiore del
+    default, tenerli sempre affiancati costringeva ogni riga (link,
+    Wikipedia, pillole di stato) ad andare a capo dentro una colonna
+    già stretta, con il risultato di spaziature enormi e disordinate.
+    Impilare verticalmente su mobile è la correzione robusta: non dipende
+    da quanto è grande il font dell'utente.
+  - **Eliminazione serie**: conferma tramite modale (`ConfirmDeleteModal`,
+    riusa `Modal`) — mai `window.confirm()` nativo, che non segue lo stile
+    dell'app ed è più rischioso da confermare per errore con un bottone
+    icona piccolo come la ✕ del titolo.
+- **Ricerca serie**: due varianti per piattaforma, stessa logica di
+  filtro condivisa (`filterSeriesByTitle` in `src/lib/search.js`, semplice
+  substring case-insensitive sul titolo).
+  - **Desktop** (`src/components/HeaderSearch.jsx`, nascosta sotto `sm`):
+    campo di ricerca inline nell'header con dropdown risultati (poster +
+    titolo, clic naviga alla serie). **Disabilitato quando si è già sulla
+    pagina dettaglio di una serie** (`location.pathname.startsWith('/serie/')`)
+    — cercare da lì porterebbe via dalla serie che si sta già guardando.
+    Scorciatoia da tastiera **`/`** per mettere a fuoco il campo (ignorata
+    se si sta già scrivendo in un altro input/textarea/contenteditable, e
+    se la ricerca è disabilitata); `Escape` svuota e toglie il focus,
+    `Enter` seleziona il primo risultato.
+  - **Mobile** (`src/components/MobileSearchModal.jsx` + pulsante flottante
+    in `src/pages/Home.jsx`, `fixed bottom-5 right-5`, solo su Libreria,
+    icona `SearchIcon.jsx` — SVG disegnata a mano, non emoji: non esiste un
+    buon simbolo Unicode non-emoji per una lente d'ingrandimento):
+    apre una modale con campo di ricerca + stessa lista risultati.
+  - Entrambe le varianti hanno un bottone "cancella" (✕) dentro il campo,
+    visibile solo quando c'è testo.
 - **PWA, tasto back Android**: mitigazione nota per il frame vuoto grigio che
   Android può mostrare per un istante sulla home page prima che un secondo
   back chiuda l'app (vedi `useEffect` in `App.jsx`: se

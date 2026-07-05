@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
 import RatingChart from '../components/RatingChart'
+import Modal from '../components/Modal'
 import {
   progressRatio,
   totalEpisodes,
@@ -37,6 +38,10 @@ export default function SeriesDetail() {
   } = useVault()
   const series = getSeries(id)
 
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   if (!series) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10 text-center sm:px-6">
@@ -54,8 +59,19 @@ export default function SeriesDetail() {
   const remaining = remainingMinutes(series)
   const showRatingSection = series.status === 'completed' || chartData.length > 0
 
+  async function handleRefresh() {
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      await refreshFromTmdb(series.id)
+    } catch (e) {
+      setRefreshError(e.message)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   async function handleDelete() {
-    if (!window.confirm(`Eliminare "${series.title}" dalla libreria?`)) return
     await removeSeries(series.id)
     navigate('/')
   }
@@ -66,7 +82,7 @@ export default function SeriesDetail() {
         ← Libreria
       </button>
 
-      <div className="flex gap-4 sm:gap-6">
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
         <div className="h-40 w-28 shrink-0 overflow-hidden rounded-xl bg-surface-hover sm:h-52 sm:w-36">
           {series.posterPath ? (
             <img src={series.posterPath} alt={series.title} className="h-full w-full object-cover" />
@@ -77,8 +93,34 @@ export default function SeriesDetail() {
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <h1 className="text-xl font-semibold text-text sm:text-2xl">{series.title}</h1>
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h1 className="text-xl font-semibold text-text sm:text-2xl">{series.title}</h1>
+            <div className="flex shrink-0 items-center gap-1">
+              {series.source === 'tmdb' && (
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  aria-label="Aggiorna da TMDB"
+                  title="Aggiorna da TMDB"
+                  className={`rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-accent disabled:opacity-50 ${
+                    refreshing ? 'animate-spin' : ''
+                  }`}
+                >
+                  ↻
+                </button>
+              )}
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                aria-label="Elimina serie"
+                title="Elimina serie"
+                className="rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-danger"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          {refreshError && <p className="text-xs text-danger">{refreshError}</p>}
 
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(STATUS_META).map(([key, meta]) => {
@@ -117,19 +159,16 @@ export default function SeriesDetail() {
             series={series}
             onSetWikipediaLink={(lang, url) => setWikipediaLink(series.id, lang, url)}
           />
-
-          {series.source === 'tmdb' && (
-            <RefreshRow onRefresh={() => refreshFromTmdb(series.id)} />
-          )}
-
-          <button
-            onClick={handleDelete}
-            className="mt-auto self-start text-sm text-danger hover:underline"
-          >
-            Elimina serie
-          </button>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <ConfirmDeleteModal
+          title={series.title}
+          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={handleDelete}
+        />
+      )}
 
       <div className="mt-6 flex flex-col gap-4">
         <div className="rounded-2xl border border-border bg-surface p-4">
@@ -331,33 +370,28 @@ function WikipediaLink({ label, value, computed, onSave }) {
   )
 }
 
-function RefreshRow({ onRefresh }) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-
-  async function handleRefresh() {
-    setLoading(true)
-    setError(null)
-    try {
-      await onRefresh()
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
+function ConfirmDeleteModal({ title, onCancel, onConfirm }) {
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={handleRefresh}
-        disabled={loading}
-        className="self-start text-sm text-accent hover:underline disabled:opacity-50"
-      >
-        {loading ? 'Aggiornamento...' : 'Aggiorna da TMDB'}
-      </button>
-      {error && <span className="text-xs text-danger">{error}</span>}
-    </div>
+    <Modal title="Eliminare la serie?" onClose={onCancel}>
+      <p className="text-sm text-muted">
+        Stai per eliminare <span className="font-medium text-text">"{title}"</span> dalla libreria.
+        Questa azione non può essere annullata.
+      </p>
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          onClick={onCancel}
+          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-text hover:bg-surface-hover"
+        >
+          Annulla
+        </button>
+        <button
+          onClick={onConfirm}
+          className="rounded-full bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+        >
+          Elimina
+        </button>
+      </div>
+    </Modal>
   )
 }
 
