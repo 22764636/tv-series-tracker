@@ -9,7 +9,7 @@ import { nanoid } from 'nanoid'
 import { vaultRef, firebaseConfigured } from '../lib/firebase'
 import { aggregateHeartRating, episodeKey, totalEpisodes } from '../lib/progress'
 import { dateKey } from '../lib/schedule'
-import { getShowDetails, posterUrl } from '../lib/tmdb'
+import { getEpisodeDurations, getShowDetails, posterUrl } from '../lib/tmdb'
 
 const VaultContext = createContext(null)
 
@@ -175,11 +175,13 @@ export function VaultProvider({ children }) {
     if (!current || current.source !== 'tmdb') return
     const tmdbId = id.replace(/^tmdb-/, '')
     const details = await getShowDetails(tmdbId)
+    const durations = await getEpisodeDurations(tmdbId, details.seasons)
     const updates = withUpdatedAt(id, {
       [`series.${id}.title`]: details.title,
       [`series.${id}.posterPath`]: posterUrl(details.posterPath),
       [`series.${id}.seasons`]: details.seasons,
       [`series.${id}.ongoing`]: details.ongoing,
+      [`series.${id}.episodeDurations`]: durations,
     })
     const newTotal = details.seasons.reduce((sum, s) => sum + s.episodeCount, 0)
     const hadNewEpisodes = newTotal > totalEpisodes(current)
@@ -187,6 +189,19 @@ export function VaultProvider({ children }) {
       updates[`series.${id}.status`] = 'planned'
     }
     await updateDoc(vaultRef, updates)
+  }
+
+  // Manual series have no TMDB source for durations, so each episode's
+  // duration is entered by hand and stored the same way TMDB's are
+  // (episodeDurations[SxEy]) — editable any time, watched or not, since
+  // knowing an unwatched episode's length is the whole point of the
+  // remaining-time total (see remainingMinutes in progress.js).
+  async function setEpisodeDuration(id, season, episode, minutes) {
+    const path = `series.${id}.episodeDurations.${episodeKey(season, episode)}`
+    await updateDoc(
+      vaultRef,
+      withUpdatedAt(id, { [path]: minutes == null ? deleteField() : minutes }),
+    )
   }
 
   // Watched episodes store the real date they were marked watched (not just
@@ -246,6 +261,7 @@ export function VaultProvider({ children }) {
     setWatchDays,
     setRating,
     setEpisodeRating,
+    setEpisodeDuration,
     setWikipediaLink,
     refreshFromTmdb,
     toggleEpisode,

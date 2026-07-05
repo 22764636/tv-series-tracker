@@ -168,6 +168,17 @@
 <p class="lede"><code class="class">src/components/ProgressBar.jsx</code> — track <code class="class">h-1.5 rounded-full bg-border</code>, fill <code class="class">h-full rounded-full bg-accent</code>.</p>
 <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
 
+<h2>SeriesDetail page layout</h2>
+<p class="lede">
+  Two tiers. The <strong>header</strong> (poster + a narrow column beside it) holds only what's compact: title,
+  status pills, progress bar + "X/Y episodi visti" (+ "Z rimanenti" when known), link, Wikipedia EN/IT, "Aggiorna da
+  TMDB", "Elimina serie". Everything heavier — giorni di visione (7 pills) and valutazione + grafico — is instead its
+  own full-width section below the header, each wrapped in
+  <code class="class">rounded-2xl border border-border bg-surface p-4</code>, stacked with
+  <code class="class">flex flex-col gap-4</code>. Don't fold those two back into the narrow header column: that's what
+  made the page read as cramped and inconsistent with the full-width season/episode section further down.
+</p>
+
 <h2>Episode buttons (SeriesDetail)</h2>
 <p class="lede">Grid buttons in <code class="class">src/pages/SeriesDetail.jsx</code>, <code class="class">aspect-square rounded-lg border text-xs font-medium</code>.</p>
 <div class="row">
@@ -227,14 +238,20 @@
   to the computed guess rather than removing the link entirely.
 </p>
 
-<h2>Per-episode rating rows (SeasonBlock)</h2>
+<h2>Per-episode rating + duration rows (SeasonBlock)</h2>
 <p class="lede">
-  Below each season's episode-button grid, one row per <em>watched</em> episode:
+  Below each season's episode-button grid, one row per <em>relevant</em> episode:
   <code class="class">flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm</code>,
-  same row shell as the Calendario entry list. Episode label (<code class="class">text-muted</code>) on the left, the same
-  two <code class="class">HeartRating</code> widgets (💙/💜) on the right as the total rating — reused as-is, just wired to
-  <code class="class">setEpisodeRating</code> instead of <code class="class">setRating</code>. Available as soon as an
-  episode is watched, regardless of the series' own status (unlike the total rating, still gated to "Completata").
+  same row shell as the Calendario entry list. Episode label (<code class="class">text-muted</code>) on the left; on the
+  right, duration then rating. A watched episode always gets a row (for its rating); a TMDB episode also gets one once
+  TMDB has published a duration for it even if unwatched; a manual-source episode always gets one (duration must be
+  enterable before it's watched, so remaining-time has something to sum).
+  Duration: plain <code class="class">text-xs text-muted</code> text for TMDB (automatic, not editable — it would just
+  get overwritten on the next "Aggiorna da TMDB" anyway), or the same edit/display/add pattern as
+  <code class="class">LinkRow</code> for manual series (<code class="class">DurationField</code>). Rating: the same two
+  <code class="class">HeartRating</code> widgets (💙/💜) as the total rating, shown only once the episode is watched —
+  wired to <code class="class">setEpisodeRating</code> instead of <code class="class">setRating</code>, available
+  regardless of the series' own status (unlike the total rating, still gated to "Completata").
 </p>
 
 <h2>RatingChart (SeriesDetail)</h2>
@@ -244,11 +261,18 @@
   <code class="class">S1E2</code>, ... skipping labels that would collide rather than ever overlapping them), three 2px
   lines: 💙 and 💜 in <code class="class">var(--chart-blue)</code>/<code class="class">var(--chart-purple)</code>, plus a
   dashed <code class="class">var(--color-muted)</code> "Media" line (the average is a derived value, not a third voter,
-  so it deliberately isn't a third categorical hue). Legend row above the chart (line-swatch + label) since it's
-  &ge;2 series. Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode —
-  every value it shows is also plainly visible in the per-episode rows above (that's this chart's "table view").
-  Horizontally scrolls (plain scrollbar, not <code class="class">.no-scrollbar</code>) once episodes no longer fit the
-  container at a comfortable point spacing.
+  so it deliberately isn't a third categorical hue). Above the chart, a row combines the legend swatches with the
+  <strong>current totals</strong> — "💙 X/10", "💜 X/10", "Media X/10" — always visible, not just on hover; the caller
+  passes those numbers in as props (<code class="class">totalBlue</code>/<code class="class">totalPurple</code>/
+  <code class="class">totalAverage</code>, computed with progress.js helpers) rather than the chart re-deriving them.
+  Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode — every value it
+  shows is also plainly visible in the per-episode rows above (that's this chart's "table view"). Sizing: SVG
+  <code class="class">viewBox</code> defines the logical coordinate space, but the element itself is
+  <code class="class">width: 100%; min-width: &lt;natural px&gt;; height: auto</code> — it stretches to fill the card
+  when there's room (few rated episodes on a wide screen) and only falls back to horizontal scroll
+  (<code class="class">overflow-x-auto</code> wrapper, plain scrollbar, not <code class="class">.no-scrollbar</code>)
+  once episodes genuinely no longer fit at a comfortable point spacing. Don't pin it to a fixed pixel width — that's
+  what made it look small on wide screens before.
 </p>
 <p class="lede">
   <strong>Chart color tokens</strong> — <code class="class">--chart-blue</code>/<code class="class">--chart-purple</code>

@@ -1,3 +1,5 @@
+import { episodeKey } from './progress'
+
 const API_BASE = 'https://api.themoviedb.org/3'
 const IMAGE_BASE = 'https://image.tmdb.org/t/p/w342'
 
@@ -45,4 +47,29 @@ export async function getShowDetails(tmdbId) {
       .filter((s) => s.season_number > 0 && s.episode_count > 0)
       .map((s) => ({ number: s.season_number, episodeCount: s.episode_count })),
   }
+}
+
+// Episode runtimes live on a separate per-season endpoint, not on /tv/{id} —
+// one extra request per season. Unaired episodes usually have a null
+// runtime; those are simply omitted rather than guessed at.
+async function getSeasonEpisodeDurations(tmdbId, seasonNumber) {
+  const url = `${API_BASE}/tv/${tmdbId}/season/${seasonNumber}?api_key=${apiKey}`
+  const res = await fetch(url)
+  if (!res.ok) return {}
+  const data = await res.json()
+  const durations = {}
+  for (const ep of data.episodes ?? []) {
+    if (ep.runtime != null) durations[episodeKey(seasonNumber, ep.episode_number)] = ep.runtime
+  }
+  return durations
+}
+
+// Fetches durations for every season in parallel and merges them into one
+// { [SxEy]: minutes } map — used both when adding a TMDB series and on every
+// "Aggiorna da TMDB" refresh.
+export async function getEpisodeDurations(tmdbId, seasons) {
+  const perSeason = await Promise.all(
+    seasons.map((s) => getSeasonEpisodeDurations(tmdbId, s.number)),
+  )
+  return Object.assign({}, ...perSeason)
 }

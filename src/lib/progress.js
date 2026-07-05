@@ -65,6 +65,37 @@ export function aggregateHeartRating(episodeRatings, heart) {
   return Math.round(mean * 100) / 100
 }
 
+// Sum of durations for unwatched episodes with a known duration — episodes
+// we don't have a duration for are simply excluded from the sum (not treated
+// as 0), so this can undercount rather than ever overcount. Pass a season
+// number to scope it to one season instead of the whole series; recomputed
+// live every render, nothing persisted, same as progressRatio.
+export function remainingMinutes(series, seasonNumber = null) {
+  let total = 0
+  for (const season of series.seasons) {
+    if (seasonNumber != null && season.number !== seasonNumber) continue
+    for (let ep = 1; ep <= season.episodeCount; ep++) {
+      const key = episodeKey(season.number, ep)
+      if (series.watched?.[key]) continue
+      const duration = series.episodeDurations?.[key]
+      if (duration != null) total += duration
+    }
+  }
+  return total
+}
+
+// "3h 20min" / "45min". Callers should only render this when
+// remainingMinutes() > 0 — it's 0 both when nothing's left to watch and when
+// no durations are known yet, and hiding the line is the right call either
+// way, so there's nothing to disambiguate here.
+export function formatDuration(minutes) {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours === 0) return `${mins}min`
+  if (mins === 0) return `${hours}h`
+  return `${hours}h ${mins}min`
+}
+
 // Chronological (season/episode order) list of episodes that have at least
 // one heart rated, each with both individual values and their average — feeds
 // both the episode rating rows and the RatingChart.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Modal from './Modal'
-import { posterUrl, searchShows, getShowDetails, tmdbConfigured } from '../lib/tmdb'
+import { posterUrl, searchShows, getShowDetails, getEpisodeDurations, tmdbConfigured } from '../lib/tmdb'
 import { useVault, newManualId, tmdbSeriesId } from '../store/VaultContext'
 
 const TABS = [
@@ -84,6 +84,7 @@ function SearchTab({ onClose }) {
     setAddingId(result.tmdbId)
     try {
       const details = await getShowDetails(result.tmdbId)
+      const episodeDurations = await getEpisodeDurations(result.tmdbId, details.seasons)
       await addSeries({
         id,
         source: 'tmdb',
@@ -91,6 +92,7 @@ function SearchTab({ onClose }) {
         posterPath: posterUrl(details.posterPath),
         seasons: details.seasons,
         ongoing: details.ongoing,
+        episodeDurations,
       })
       onClose()
       navigate(`/serie/${id}`)
