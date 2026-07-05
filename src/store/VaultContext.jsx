@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore'
 import { nanoid } from 'nanoid'
 import { vaultRef, firebaseConfigured } from '../lib/firebase'
-import { episodeKey, totalEpisodes } from '../lib/progress'
+import { aggregateHeartRating, episodeKey, totalEpisodes } from '../lib/progress'
 import { dateKey } from '../lib/schedule'
 import { getShowDetails, posterUrl } from '../lib/tmdb'
 
@@ -111,11 +111,55 @@ export function VaultProvider({ children }) {
 
   // Two independent ratings (blue heart / purple heart, one per person) —
   // the displayed rating is their average (see averageRating in progress.js).
+  // This manual total is only "sticky" while no per-episode ratings exist for
+  // that heart — as soon as one does, setEpisodeRating below recomputes and
+  // overwrites it on every change (auto-computed always wins, confirmed).
   async function setRating(id, heart, rating) {
     const field = heart === 'blue' ? 'ratingBlue' : 'ratingPurple'
     await updateDoc(
       vaultRef,
       withUpdatedAt(id, { [`series.${id}.${field}`]: rating == null ? deleteField() : rating }),
+    )
+  }
+
+  // Per-episode ratings can be entered as soon as an episode is watched,
+  // regardless of the series' own status (confirmed) — unlike the total
+  // rating, which stays gated to "Completata" in the UI. Every change
+  // recomputes that heart's series-level total as the mean across all
+  // episodes that have it rated, and writes it alongside (see
+  // aggregateHeartRating in progress.js) — this is what makes the
+  // auto-computed total always win over a stale manual value.
+  async function setEpisodeRating(id, season, episode, heart, rating) {
+    const current = seriesMap?.[id]
+    const key = episodeKey(season, episode)
+    const path = `series.${id}.episodeRatings.${key}.${heart}`
+
+    const existing = current?.episodeRatings ?? {}
+    const nextEntry = { ...existing[key] }
+    if (rating == null) delete nextEntry[heart]
+    else nextEntry[heart] = rating
+    const nextEpisodeRatings = { ...existing, [key]: nextEntry }
+
+    const updates = withUpdatedAt(id, {
+      [path]: rating == null ? deleteField() : rating,
+    })
+    const totalField = heart === 'blue' ? 'ratingBlue' : 'ratingPurple'
+    const aggregate = aggregateHeartRating(nextEpisodeRatings, heart)
+    if (aggregate != null) {
+      updates[`series.${id}.${totalField}`] = aggregate
+    }
+    await updateDoc(vaultRef, updates)
+  }
+
+  // Wikipedia EN/IT links are computed by default (see wikipediaUrl in
+  // wikipedia.js) but can be overridden per series if the guessed URL is
+  // wrong (retitled article, disambiguation page, etc.). Clearing the
+  // override goes back to the computed guess, it doesn't remove the link.
+  async function setWikipediaLink(id, lang, url) {
+    const field = lang === 'en' ? 'wikipediaEn' : 'wikipediaIt'
+    await updateDoc(
+      vaultRef,
+      withUpdatedAt(id, { [`series.${id}.${field}`]: url ? url : deleteField() }),
     )
   }
 
@@ -201,6 +245,8 @@ export function VaultProvider({ children }) {
     setLink,
     setWatchDays,
     setRating,
+    setEpisodeRating,
+    setWikipediaLink,
     refreshFromTmdb,
     toggleEpisode,
     setSeasonWatched,

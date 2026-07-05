@@ -45,7 +45,11 @@ function unwatchedEpisodesInOrder(series) {
 // today's date + each series' watchDays + remaining unwatched count. This is
 // what makes a skipped watch day "keep counting" — the remaining count only
 // drops once an episode is actually marked watched, so the projection simply
-// shifts forward instead of the series falling off the calendar.
+// shifts forward instead of the series falling off the calendar. The scan
+// includes today itself: a series scheduled today whose episode isn't marked
+// watched yet must still show up on today's cell, not skip straight to its
+// next occurrence (which, for a Sunday-only show checked on a Sunday, would
+// otherwise jump a full week ahead).
 export function upcomingCalendarEntries(seriesList, today = new Date()) {
   const entries = []
 
@@ -63,7 +67,6 @@ export function upcomingCalendarEntries(seriesList, today = new Date()) {
 
     const cursor = new Date(today)
     cursor.setHours(0, 0, 0, 0)
-    cursor.setDate(cursor.getDate() + 1) // start from tomorrow, never today
 
     let found = 0
     let guard = 0

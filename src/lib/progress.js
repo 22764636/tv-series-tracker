@@ -50,3 +50,34 @@ export function averageRating(series) {
 export function formatRating(value) {
   return Number(value.toFixed(2)).toString()
 }
+
+// The series-level total for one heart is the mean of that heart's ratings
+// across every episode that has one — recomputed whenever an episode rating
+// changes (see setEpisodeRating in VaultContext.jsx), and always wins over a
+// manually-typed total. Returns null when no episode has that heart rated
+// yet, so the manual value (if any) is left alone.
+export function aggregateHeartRating(episodeRatings, heart) {
+  const values = Object.values(episodeRatings ?? {})
+    .map((r) => r?.[heart])
+    .filter((v) => v != null)
+  if (values.length === 0) return null
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length
+  return Math.round(mean * 100) / 100
+}
+
+// Chronological (season/episode order) list of episodes that have at least
+// one heart rated, each with both individual values and their average — feeds
+// both the episode rating rows and the RatingChart.
+export function episodeRatingChartData(series) {
+  const data = []
+  for (const season of series.seasons.slice().sort((a, b) => a.number - b.number)) {
+    for (let ep = 1; ep <= season.episodeCount; ep++) {
+      const key = episodeKey(season.number, ep)
+      const r = series.episodeRatings?.[key]
+      if (!r || (r.blue == null && r.purple == null)) continue
+      const avg = r.blue != null && r.purple != null ? (r.blue + r.purple) / 2 : r.blue ?? r.purple
+      data.push({ key, season: season.number, episode: ep, blue: r.blue ?? null, purple: r.purple ?? null, avg })
+    }
+  }
+  return data
+}
