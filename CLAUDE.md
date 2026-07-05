@@ -87,6 +87,15 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     per l'icona iOS "aggiungi a Home". Se si rigenera l'icona, aggiornare
     entrambe le varianti e ri-esportare i PNG (renderizzando l'SVG, non
     ridisegnandoli a mano).
+  - **Trappola nota**: in `manifest.json`, `"purpose": "maskable"` (o `"any
+    maskable"`) sulle icone dice a Chrome/Android di dipingere sempre uno
+    sfondo pieno dietro l'icona per adattarla alle maschere adattive di
+    sistema, **anche se il PNG sorgente ha sfondo trasparente** — non è un
+    bug del PNG, è il comportamento previsto di quel valore. Le nostre
+    icone PWA hanno sfondo trasparente intenzionale: usare solo
+    `"purpose": "any"`. Nota separata: `apple-touch-icon.png` (iOS) non può
+    mai essere trasparente, è una limitazione della piattaforma, non
+    risolvibile da manifest/config.
 - **Calendario** (`src/pages/Calendar.jsx` + `src/lib/schedule.js`), griglia
   mensile (lun-dom, navigazione libera avanti/indietro):
   - Ogni serie ha un campo opzionale `watchDays` (giorni della settimana in
@@ -107,6 +116,13 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
   - Navigazione tra i mesi: bottoni ← →, rotellina del mouse (desktop) e
     swipe orizzontale (touch), tutti e tre attivi contemporaneamente sulla
     stessa griglia — non rimuovere nessuno dei tre in favore degli altri.
+    Ogni cambio mese rigioca un'animazione slide+fade direction-aware
+    (classi `.animate-slide-next`/`.animate-slide-prev` in `index.css`,
+    rigiocata rimontando la griglia con una `key` React legata a
+    `${year}-${month}`). Lo scroll con rotellina ha un cooldown breve
+    (`useRef`, non state React, 150ms) solo per evitare che un singolo gesto
+    del trackpad salti più mesi insieme — non allungarlo: uno scroll rapido
+    e deliberato deve poter cambiare mese rapidamente in sequenza.
 - **`series.watched[SxEy]` è una data (`YYYY-MM-DD`), non `true`**: il
   giorno reale in cui l'episodio è stato segnato visto (vedi `dateKey` in
   `src/lib/schedule.js` — usa i componenti locali della data, MAI
@@ -196,3 +212,19 @@ dal codice reale è peggio che non averla.
   `SeriesDetail.jsx`): il controllo non viene proprio renderizzato per le
   altre serie. Il valore non viene cancellato se lo stato cambia
   successivamente (stesso comportamento non distruttivo del link).
+- **`StatusTabs` su mobile** scorre orizzontalmente (`overflow-x-auto` +
+  classe di utilità `.no-scrollbar` in `index.css` per nascondere la
+  scrollbar senza disabilitare lo scroll, bottoni con `shrink-0`) invece di
+  andare a capo su due righe: andare a capo spingerebbe in basso la griglia
+  delle serie sotto. Ogni riga di filtri/ordinamento che rischia di non
+  entrare su schermi stretti deve seguire lo stesso pattern (scroll, non
+  wrap), non introdurne di nuovi.
+- **PWA, tasto back Android**: mitigazione nota per il frame vuoto grigio che
+  Android può mostrare per un istante sulla home page prima che un secondo
+  back chiuda l'app (vedi `useEffect` in `App.jsx`: se
+  `display-mode: standalone`, un `history.pushState` all'avvio imbottisce
+  lo stack di history con una voce in più, così il primo back consuma
+  quella invece di uscire a vuoto). È un mitigamento, non una garanzia: il
+  frame grigio può essere un artefatto di rendering di Android/Chrome
+  durante lo smontaggio della WebAPK, non completamente risolvibile da puro
+  JS lato client senza un wrapper nativo.

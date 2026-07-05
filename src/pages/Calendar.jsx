@@ -48,19 +48,24 @@ export default function Calendar() {
   const entriesByDate = useMemo(() => calendarEntriesByDate(series, today), [series, today])
   const cells = useMemo(() => buildMonthCells(viewMonth), [viewMonth])
   const selectedEntries = entriesByDate.get(dateKey(selectedDate)) ?? []
+  const [direction, setDirection] = useState(1)
 
   function changeMonth(delta) {
+    setDirection(delta)
     setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1))
   }
 
   function goToday() {
+    setDirection(viewMonth > today ? -1 : 1)
     setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1))
     setSelectedDate(today)
   }
 
   // Mouse wheel (desktop) and swipe (touch) both change month, alongside the
   // arrow buttons. Wheel is throttled since trackpads fire many small delta
-  // events per gesture — one gesture should move one month, not several.
+  // events per physical gesture — without this, one swipe could jump several
+  // months. Kept short so deliberately fast, repeated scrolling still feels
+  // responsive rather than rate-limited.
   const wheelLocked = useRef(false)
   function handleWheel(e) {
     if (Math.abs(e.deltaY) < 15 || wheelLocked.current) return
@@ -68,7 +73,7 @@ export default function Calendar() {
     wheelLocked.current = true
     setTimeout(() => {
       wheelLocked.current = false
-    }, 450)
+    }, 150)
   }
 
   const touchStartX = useRef(null)
@@ -122,7 +127,10 @@ export default function Calendar() {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div
+          key={`${viewMonth.getFullYear()}-${viewMonth.getMonth()}`}
+          className={`grid grid-cols-7 gap-1 ${direction >= 0 ? 'animate-slide-next' : 'animate-slide-prev'}`}
+        >
           {cells.map((date, i) => {
           if (!date) return <div key={i} />
           const key = dateKey(date)

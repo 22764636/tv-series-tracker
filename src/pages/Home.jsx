@@ -39,12 +39,14 @@ export default function Home() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <StatusTabs active={tab} onChange={setTab} />
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <StatusTabs active={tab} onChange={setTab} />
+        </div>
         <select
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value)}
-          className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+          className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.key} value={o.key}>

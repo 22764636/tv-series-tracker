@@ -208,11 +208,21 @@
 
 <h2>Sort control (Home)</h2>
 <p class="lede">
-  Native <code class="class">&lt;select&gt;</code> in <code class="class">rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text</code>,
-  same row as <code class="class">StatusTabs</code> (parent: <code class="class">flex flex-wrap items-center justify-between gap-3</code>),
-  pushed to the far right by that <code class="class">justify-between</code>. Options: ultimo aggiornamento (default),
-  titolo (A-Z), valutazione, progresso — comparator lives in <code class="class">Home.jsx</code>, reusing
-  <code class="class">progressRatio</code> from progress.js rather than re-deriving it.
+  Native <code class="class">&lt;select&gt;</code> in <code class="class">rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text shrink-0</code>,
+  same row as <code class="class">StatusTabs</code> (parent: <code class="class">flex items-center gap-3</code>, tabs wrapped in
+  <code class="class">min-w-0 flex-1</code> so they can shrink/scroll instead of wrapping the select onto a second row).
+  Options: ultimo aggiornamento (default), titolo (A-Z), valutazione, progresso — comparator lives in
+  <code class="class">Home.jsx</code>, reusing <code class="class">progressRatio</code> from progress.js rather than re-deriving it.
+</p>
+
+<h2>StatusTabs (horizontal scroll on mobile)</h2>
+<p class="lede">
+  Wrapper: <code class="class">no-scrollbar flex gap-2 overflow-x-auto</code>; each pill button has
+  <code class="class">shrink-0</code> added so it never squishes. On narrow screens where all status pills don't fit
+  the row, it scrolls horizontally (touch/wheel) instead of wrapping to a second row and pushing the series grid
+  down. <code class="class">.no-scrollbar</code> (in <code class="class">src/index.css</code>) hides the scrollbar track
+  cross-browser while leaving scrolling itself enabled — used here and anywhere else a horizontally-scrollable row
+  shouldn't show a visible track.
 </p>
 
 <h2>Header nav links</h2>
@@ -235,7 +245,14 @@
   entries get an inline <code class="class">type="date"</code> input to correct the recorded date.
   Future entries are derived live (never stored) from each series' <code class="class">watchDays</code> + remaining
   unwatched count; past/today entries come from the real per-episode watched date — see
-  <code class="class">src/lib/schedule.js</code>.
+  <code class="class">src/lib/schedule.js</code>. Navigation (← → buttons, mouse wheel, touch swipe — all three
+  active at once) triggers a direction-aware slide+fade replay: the grid is remounted via a React
+  <code class="class">key</code> tied to <code class="class">${year}-${month}</code> with class
+  <code class="class">animate-slide-next</code> (from the right) or <code class="class">animate-slide-prev</code>
+  (from the left) depending on which way the month changed — keyframes in <code class="class">src/index.css</code>.
+  Wheel navigation is throttled with a short 150ms cooldown (a <code class="class">useRef</code> lock, not React
+  state) just enough to stop one trackpad gesture firing several months at once, without feeling laggy on
+  deliberate fast scrolling.
 </p>
 <div class="row" style="flex-direction:column; align-items:stretch; max-width:420px">
   <div style="border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; background:var(--surface)">
