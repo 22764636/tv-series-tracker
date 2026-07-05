@@ -153,11 +153,14 @@
 </table>
 
 <h2>Status badges</h2>
-<p class="lede"><code class="class">src/components/StatusBadge.jsx</code> — base class <code class="class">rounded-full px-2.5 py-1 text-xs font-medium</code>, color pair per status.</p>
+<p class="lede"><code class="class">src/components/StatusBadge.jsx</code> — base class <code class="class">rounded-full px-2.5 py-1 text-xs font-medium</code>, color pair per status.
+  "In attesa di nuova stagione" intentionally reuses the <code class="class">accent</code> color pair with "In corso" (auto-set
+  by <code class="class">autoStatusUpdates</code> when a series is fully watched but TMDB says it's still ongoing — see CLAUDE.md).</p>
 <div class="row">
   <span class="badge badge-accent">In corso</span>
   <span class="badge badge-muted">Da vedere</span>
   <span class="badge badge-success">Completata</span>
+  <span class="badge badge-accent">In attesa di nuova stagione</span>
   <span class="badge badge-danger">Abbandonata</span>
 </div>
 
@@ -195,15 +198,30 @@
 <h2>Form inputs</h2>
 <p class="lede">Used in AddSeriesModal search/manual forms: <code class="class">rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent</code>.</p>
 
-<h2>Rating (SeriesDetail + card)</h2>
+<h2>Rating — two hearts (SeriesDetail + card)</h2>
 <p class="lede">
-  <code class="class">RatingRow</code> in SeriesDetail.jsx — only rendered when <code class="class">series.status === 'completed'</code>.
-  Same edit/display/add pattern as <code class="class">LinkRow</code>: plain text "Valutazione: X/10" (no icon), a small
-  <code class="class">text-xs text-muted</code> "Modifica" button, or a "+ Aggiungi valutazione" <code class="class">text-accent hover:underline</code>
-  link when unset. Input: <code class="class">type="number" min="1" max="10" step="0.5"</code>, same input classes as the link field.
-  On the card, shown as "Voto X/10" (short label so it still reads as a rating, not just a bare fraction) — the
+  <code class="class">RatingRow</code> in SeriesDetail.jsx — only rendered when <code class="class">series.status === 'completed'</code>
+  (not for <code class="class">renewed</code>). Two independent <code class="class">HeartRating</code> rows, one
+  per person: 💙 (<code class="class">series.ratingBlue</code>) and 💜 (<code class="class">series.ratingPurple</code>) —
+  these two emoji are an explicit, one-off exception to the no-emoji rule, requested for this exact spot only.
+  Each follows the same edit/display/add pattern as <code class="class">LinkRow</code>: plain text "💙 X/10", a small
+  <code class="class">text-xs text-muted</code> "Modifica" button, or a "💙 + Aggiungi" <code class="class">text-accent hover:underline</code>
+  link when unset. Input: <code class="class">type="number" min="1" max="10" step="0.01"</code> (up to 2 decimals), same
+  input classes as the link field. Above the two heart rows, when at least one is set, a plain "Valutazione: X/10" line
+  shows the <code class="class">averageRating()</code> (progress.js) of whichever hearts have voted — if only one has,
+  that single value stands in as the provisional average. <code class="class">formatRating()</code> rounds to 2 decimals
+  and strips trailing zeros (8 instead of 8.00). On the card, shown as "Voto X/10" using the same average — the
   status-badge row uses <code class="class">flex items-center justify-between</code> so the rating sits flush right
   opposite the badge, instead of just trailing it.
+</p>
+
+<h2>Aggiorna da TMDB / Wikipedia links (SeriesDetail)</h2>
+<p class="lede">
+  <code class="class">RefreshRow</code> — a single <code class="class">text-sm text-accent hover:underline</code> button
+  ("Aggiorna da TMDB" / "Aggiornamento..." while pending), shown only when <code class="class">series.source === 'tmdb'</code>.
+  On error, an inline <code class="class">text-xs text-danger</code> message next to the button — no modal, no toast.
+  <code class="class">WikipediaRow</code> — two plain <code class="class">text-accent hover:underline</code> links,
+  "Wikipedia (EN)" / "Wikipedia (IT)", same row, computed from the title on every render (never stored).
 </p>
 
 <h2>Sort control (Home)</h2>

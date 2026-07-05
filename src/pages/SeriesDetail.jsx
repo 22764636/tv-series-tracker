@@ -2,8 +2,17 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import ProgressBar from '../components/ProgressBar'
-import { progressRatio, totalEpisodes, watchedCount, episodeKey, STATUS_META } from '../lib/progress'
+import {
+  progressRatio,
+  totalEpisodes,
+  watchedCount,
+  episodeKey,
+  STATUS_META,
+  averageRating,
+  formatRating,
+} from '../lib/progress'
 import { WEEKDAYS } from '../lib/schedule'
+import { wikipediaUrl } from '../lib/wikipedia'
 
 export default function SeriesDetail() {
   const { id } = useParams()
@@ -14,6 +23,7 @@ export default function SeriesDetail() {
     setLink,
     setWatchDays,
     setRating,
+    refreshFromTmdb,
     toggleEpisode,
     setSeasonWatched,
     removeSeries,
@@ -62,7 +72,7 @@ export default function SeriesDetail() {
 
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(STATUS_META).map(([key, meta]) => {
-              const disabled = key === 'completed' && !complete
+              const disabled = (key === 'completed' || key === 'renewed') && !complete
               return (
                 <button
                   key={key}
@@ -92,13 +102,19 @@ export default function SeriesDetail() {
 
           <LinkRow series={series} onSetLink={(link) => setLink(series.id, link)} />
 
+          <WikipediaRow series={series} />
+
           <WatchDaysRow
             series={series}
             locked={locked}
             onSetWatchDays={(days) => setWatchDays(series.id, days)}
           />
 
-          <RatingRow series={series} onSetRating={(rating) => setRating(series.id, rating)} />
+          <RatingRow series={series} onSetRating={(heart, rating) => setRating(series.id, heart, rating)} />
+
+          {series.source === 'tmdb' && (
+            <RefreshRow onRefresh={() => refreshFromTmdb(series.id)} />
+          )}
 
           <button
             onClick={handleDelete}
@@ -202,6 +218,63 @@ function LinkRow({ series, onSetLink }) {
   )
 }
 
+// Direct guessed links, computed from the title on every render — never
+// stored, never fetched. If a series doesn't have a matching article,
+// Wikipedia's own "page doesn't exist" screen still gets the user close
+// enough via its built-in search suggestions.
+function WikipediaRow({ series }) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <a
+        href={wikipediaUrl(series.title, 'en')}
+        target="_blank"
+        rel="noreferrer"
+        className="text-accent hover:underline"
+      >
+        Wikipedia (EN)
+      </a>
+      <a
+        href={wikipediaUrl(series.title, 'it')}
+        target="_blank"
+        rel="noreferrer"
+        className="text-accent hover:underline"
+      >
+        Wikipedia (IT)
+      </a>
+    </div>
+  )
+}
+
+function RefreshRow({ onRefresh }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleRefresh() {
+    setLoading(true)
+    setError(null)
+    try {
+      await onRefresh()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={handleRefresh}
+        disabled={loading}
+        className="self-start text-sm text-accent hover:underline disabled:opacity-50"
+      >
+        {loading ? 'Aggiornamento...' : 'Aggiorna da TMDB'}
+      </button>
+      {error && <span className="text-xs text-danger">{error}</span>}
+    </div>
+  )
+}
+
 function WatchDaysRow({ series, locked, onSetWatchDays }) {
   const days = series.watchDays ?? []
 
@@ -240,33 +313,58 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
 }
 
 function RatingRow({ series, onSetRating }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(series.rating ?? '')
-
   if (series.status !== 'completed') return null
+
+  const rating = averageRating(series)
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {rating != null && (
+        <span className="text-sm text-text">Valutazione: {formatRating(rating)}/10</span>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <HeartRating
+          label="💙"
+          value={series.ratingBlue}
+          onSave={(v) => onSetRating('blue', v)}
+        />
+        <HeartRating
+          label="💜"
+          value={series.ratingPurple}
+          onSave={(v) => onSetRating('purple', v)}
+        />
+      </div>
+    </div>
+  )
+}
+
+function HeartRating({ label, value, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [input, setInput] = useState(value ?? '')
 
   async function save(e) {
     e.preventDefault()
-    if (value === '') {
-      await onSetRating(null)
+    if (input === '') {
+      await onSave(null)
     } else {
-      const clamped = Math.min(10, Math.max(1, Math.round(Number(value) * 2) / 2))
-      await onSetRating(clamped)
+      const clamped = Math.min(10, Math.max(1, Math.round(Number(input) * 100) / 100))
+      await onSave(clamped)
     }
     setEditing(false)
   }
 
   if (editing) {
     return (
-      <form onSubmit={save} className="flex items-center gap-2">
+      <form onSubmit={save} className="flex items-center gap-2 text-sm">
+        <span>{label}</span>
         <input
           autoFocus
           type="number"
           min="1"
           max="10"
-          step="0.5"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          step="0.01"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="1-10"
           className="w-20 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
         />
@@ -284,13 +382,13 @@ function RatingRow({ series, onSetRating }) {
     )
   }
 
-  if (series.rating != null) {
+  if (value != null) {
     return (
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-text">Valutazione: {series.rating}/10</span>
+        <span className="text-text">{label} {formatRating(value)}/10</span>
         <button
           onClick={() => {
-            setValue(series.rating)
+            setInput(value)
             setEditing(true)
           }}
           className="text-xs text-muted hover:text-text"
@@ -304,9 +402,9 @@ function RatingRow({ series, onSetRating }) {
   return (
     <button
       onClick={() => setEditing(true)}
-      className="self-start text-sm text-accent hover:underline"
+      className="text-sm text-accent hover:underline"
     >
-      + Aggiungi valutazione
+      {label} + Aggiungi
     </button>
   )
 }

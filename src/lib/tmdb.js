@@ -23,6 +23,15 @@ export async function searchShows(query) {
   }))
 }
 
+// TMDB's `status` field tells us whether the show could still get new
+// episodes/seasons in the future ("Returning Series", "In Production",
+// "Planned") vs. definitively over ("Ended", "Canceled"). Used to decide
+// whether finishing all known episodes means "Completata" or "In attesa di
+// nuova stagione" (see autoStatusUpdates in VaultContext.jsx).
+function isOngoing(status) {
+  return status !== 'Ended' && status !== 'Canceled'
+}
+
 export async function getShowDetails(tmdbId) {
   const url = `${API_BASE}/tv/${tmdbId}?api_key=${apiKey}`
   const res = await fetch(url)
@@ -31,6 +40,7 @@ export async function getShowDetails(tmdbId) {
   return {
     title: data.name,
     posterPath: data.poster_path,
+    ongoing: isOngoing(data.status),
     seasons: (data.seasons ?? [])
       .filter((s) => s.season_number > 0 && s.episode_count > 0)
       .map((s) => ({ number: s.season_number, episodeCount: s.episode_count })),

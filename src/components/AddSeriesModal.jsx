@@ -90,6 +90,7 @@ function SearchTab({ onClose }) {
         title: details.title,
         posterPath: posterUrl(details.posterPath),
         seasons: details.seasons,
+        ongoing: details.ongoing,
       })
       onClose()
       navigate(`/serie/${id}`)
