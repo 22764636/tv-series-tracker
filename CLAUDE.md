@@ -96,35 +96,41 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     integrazione API Wikipedia per questo.
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
-- **Icona app**: cuori blu e viola su un divano, su sfondo quadrato
-  arrotondato `accent-solid`. Due varianti perché il divano non si legge
-  sotto i ~40px:
-  - `public/favicon.svg` — solo i due cuori, usata per il tab del browser
-    (`<link rel="icon">` in `index.html`).
-  - `public/icon.svg` (+ `icon-192.png`/`icon-512.png` esportati dallo
-    stesso SVG per compatibilità PWA/Android, sfondo **trasparente**
-    intenzionale) e `apple-touch-icon.png` (180×180, sfondo pieno perché
-    iOS non supporta trasparenza) — versione completa con divano, usata in
-    `manifest.json` e per l'icona iOS "aggiungi a Home". Se si rigenera
-    l'icona, aggiornare entrambe le varianti e ri-esportare i PNG
-    (renderizzando l'SVG, non ridisegnandoli a mano).
-  - **Icona maskable separata** (`public/icon-maskable.svg` →
-    `icon-maskable-192.png`/`icon-maskable-512.png`, `"purpose": "maskable"`
-    in `manifest.json`, entry **separata** dagli icon "any" sopra — mai
-    `"purpose": "any maskable"` sulla stessa entry, Chrome lo segnala come
-    problema in DevTools): su Android 8+ ogni app usa un'icona adattiva che
-    richiede uno sfondo **opaco**; senza una variante maskable, Chrome/
-    Android impacchetta l'icona "any" (trasparente) dentro un riquadro
-    bianco per soddisfare comunque quel requisito — non è un bug nostro,
-    è documentato su web.dev. La variante maskable risolve il riquadro
-    bianco fornendo direttamente uno sfondo `accent-solid` pieno, ma
-    **richiede necessariamente la rinuncia alla trasparenza per quella
-    variante** (scelta esplicita dell'utente: preferita al riquadro
-    bianco). Contenuto (divano+cuori) scalato all'85% e centrato rispetto
-    a `icon.svg`, per stare dentro la "safe zone" circolare (~80% di
-    diametro) che i launcher Android possono ritagliare — senza questo
-    margine gli angoli del divano uscirebbero leggermente dal cerchio su
-    maschere circolari aggressive.
+- **Icona app**: cuori blu e viola su un divano in stile illustrazione
+  glossy/3D. Due varianti perché il divano non si legge sotto i ~40px:
+  - `public/favicon.svg` — solo i due cuori (versione vettoriale
+    semplificata), usata per il tab del browser (`<link rel="icon">` in
+    `index.html`).
+  - `public/icon-192.png`/`icon-512.png` — **artwork illustrata** (non un
+    export da un SVG vettoriale: sono l'immagine sorgente originale,
+    fornita/curata direttamente dall'utente, sfondo **trasparente**
+    intenzionale), usata in `manifest.json` come icone `"purpose": "any"` e
+    come base per la variante maskable sotto. `apple-touch-icon.png`
+    (180×180, sfondo pieno perché iOS non supporta trasparenza) è
+    generato dalla stessa artwork. Se si aggiorna l'icona, farlo
+    sostituendo direttamente questi PNG (l'artwork stessa è la fonte,
+    niente da "rigenerare" da un SVG) e ri-derivare `apple-touch-icon.png`
+    e la variante maskable sotto dalla nuova immagine.
+  - **Icona maskable separata** (`icon-maskable-192.png`/
+    `icon-maskable-512.png`, `"purpose": "maskable"` in `manifest.json`,
+    entry **separata** dagli icon "any" sopra — mai `"purpose": "any
+    maskable"` sulla stessa entry, Chrome lo segnala come problema in
+    DevTools): su Android 8+ ogni app usa un'icona adattiva che richiede
+    uno sfondo **opaco**; senza una variante maskable, Chrome/Android
+    impacchetta l'icona "any" (trasparente) dentro un riquadro bianco per
+    soddisfare comunque quel requisito — non è un bug nostro, è
+    documentato su web.dev. La variante maskable risolve il riquadro
+    bianco componendo l'artwork PNG sopra (non una ricostruzione
+    vettoriale separata: sarebbe un'illustrazione diversa, non la stessa
+    icona) su uno sfondo `accent-solid` (`#4f46e5`) pieno, scalata al 75%
+    e centrata — percentuale calcolata dal bounding box reale dei pixel
+    non trasparenti dell'artwork (non una stima), per stare dentro la
+    "safe zone" circolare (~80% di diametro) che i launcher Android
+    possono ritagliare. **Richiede necessariamente la rinuncia alla
+    trasparenza per questa sola variante** (scelta esplicita dell'utente:
+    preferita al riquadro bianco). Se si aggiorna l'artwork, ricalcolare
+    lo scale factor dal nuovo bounding box invece di riusare 75% a
+    memoria.
   - **Nota Firefox Android**: "Aggiungi a schermata Home" da Firefox può
     ignorare del tutto icona/nome del manifest e mostrare l'icona
     generica del robottino Android — bug noto e ricorrente di Firefox
