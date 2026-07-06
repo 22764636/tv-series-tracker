@@ -121,10 +121,20 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
 - **Env vars**: tutte le chiavi (Firebase, TMDB) vanno lette da
   `import.meta.env.VITE_*`, mai hardcoded nel codice. Vedi `.env.example`.
 - **Icona app**: cuori blu e viola su un divano in stile illustrazione
-  glossy/3D. Due varianti perché il divano non si legge sotto i ~40px:
-  - `public/favicon.svg` — solo i due cuori (versione vettoriale
-    semplificata), usata per il tab del browser (`<link rel="icon">` in
-    `index.html`).
+  glossy/3D. Varianti derivate perché il divano intero non si legge sotto
+  i ~40px:
+  - `public/favicon.png` — **crop stretto della sola coppia di cuori**
+    (pixel reali dell'artwork, non un disegno vettoriale a mano), su
+    sfondo `accent-solid` pieno con lo stesso angolo arrotondato del
+    vecchio `favicon.svg` (~22% di raggio, per continuità visiva), usata
+    per il tab del browser (`<link rel="icon">` in `index.html`).
+    Sostituisce un precedente `favicon.svg` con cuori ridisegnati a mano:
+    verificato (script Python/PIL, confronto a 16/32/48px) che la scena
+    intera divano+cuori diventa illeggibile a quelle dimensioni (da cui
+    la regola "non sotto i 40px"), ma un crop **stretto sui soli cuori**
+    resta leggibile anche a 16px — non serve ridisegnare una forma
+    semplificata da zero, basta ritagliare più da vicino la stessa
+    artwork reale.
   - `public/icon-192.png`/`icon-512.png` — **artwork illustrata** (non un
     export da un SVG vettoriale: sono l'immagine sorgente originale,
     fornita/curata direttamente dall'utente, sfondo **trasparente**
@@ -132,11 +142,22 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     come base per la variante maskable sotto, e in `Header.jsx` come logo
     dell'app (`<img>`, non più le emoji `💙💜` di testo — sostituite
     perché non stavano allo stesso livello qualitativo dell'artwork vera
-    e propria) accanto al nome, tramite
-    `${import.meta.env.BASE_URL}icon-512.png` (mai un path assoluto tipo
-    `/icon-512.png`: romperebbe il base path `/tv-series-tracker/` su
-    GitHub Pages — `BASE_URL` lo include già). Su mobile (`sm:hidden`
-    sul testo) resta solo il logo, senza scritta, per motivi di spazio.
+    e propria, né lo stesso testo `💙💜` nel `<title>` di `index.html` e
+    nel `name` di `manifest.json`, per lo stesso motivo). Il logo
+    nell'header è **solo l'icona, a ogni larghezza** (non più icona+nome:
+    con l'icona reale al posto delle emoji, il nome accanto risultava
+    ridondante — vedi sotto la scelta di lasciare "Calendario" come
+    unico link di navigazione), dimensionata `h-9 w-9 sm:h-10 sm:w-10`,
+    tramite `${import.meta.env.BASE_URL}icon-512.png` (mai un path
+    assoluto tipo `/icon-512.png`: romperebbe il base path
+    `/tv-series-tracker/` su GitHub Pages — `BASE_URL` lo include già).
+    Il logo resta un link a `/` (Libreria): con l'icona sola a fare da
+    home-link, il precedente link di testo "Libreria" nell'header
+    portava alla stessa identica pagina — rimosso perché puramente
+    ridondante (il pattern logo-porta-alla-home è una convenzione web
+    universale e a costo zero, un secondo link esplicito allo stesso
+    posto non aggiungeva nulla), lasciando "Calendario" come unico link
+    di navigazione esplicito.
     `apple-touch-icon.png`
     (180×180, sfondo pieno perché iOS non supporta trasparenza) è
     generato dalla stessa artwork. Se si aggiorna l'icona, farlo
