@@ -129,12 +129,33 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     export da un SVG vettoriale: sono l'immagine sorgente originale,
     fornita/curata direttamente dall'utente, sfondo **trasparente**
     intenzionale), usata in `manifest.json` come icone `"purpose": "any"` e
-    come base per la variante maskable sotto. `apple-touch-icon.png`
+    come base per la variante maskable sotto, e in `Header.jsx` come logo
+    dell'app (`<img>`, non più le emoji `💙💜` di testo — sostituite
+    perché non stavano allo stesso livello qualitativo dell'artwork vera
+    e propria) accanto al nome, tramite
+    `${import.meta.env.BASE_URL}icon-512.png` (mai un path assoluto tipo
+    `/icon-512.png`: romperebbe il base path `/tv-series-tracker/` su
+    GitHub Pages — `BASE_URL` lo include già). Su mobile (`sm:hidden`
+    sul testo) resta solo il logo, senza scritta, per motivi di spazio.
+    `apple-touch-icon.png`
     (180×180, sfondo pieno perché iOS non supporta trasparenza) è
     generato dalla stessa artwork. Se si aggiorna l'icona, farlo
     sostituendo direttamente questi PNG (l'artwork stessa è la fonte,
     niente da "rigenerare" da un SVG) e ri-derivare `apple-touch-icon.png`
-    e la variante maskable sotto dalla nuova immagine.
+    e la variante maskable sotto dalla nuova immagine. **Trappola reale già
+    capitata**: `apple-touch-icon.png` era rimasto quello vecchio (design
+    piatto pre-artwork, mai rigenerato quando l'artwork vera fu caricata),
+    mentre le varianti maskable erano state correttamente rigenerate — la
+    discrepanza è saltata fuori perché diverse superfici di condivisione
+    link (share sheet di Android, anteprime in app di messaggistica)
+    usano proprio `apple-touch-icon` come icona "di qualità" per un URL,
+    mostrando quindi la versione vecchia e sgradevole invece
+    dell'artwork attuale. Rigenerato compositando `icon-512.png` (RGBA)
+    su sfondo `accent-solid` pieno e ridimensionando a 180×180 — stessa
+    fonte delle altre varianti, nessun redesign separato. Verificare che
+    tutte le varianti derivate (maskable, apple-touch-icon) corrispondano
+    visivamente all'artwork corrente ogni volta che questa viene
+    aggiornata, non solo quelle usate più visibilmente in-app.
   - **Icona maskable separata** (`icon-maskable-192.png`/
     `icon-maskable-512.png`, `"purpose": "maskable"` in `manifest.json`,
     entry **separata** dagli icon "any" sopra — mai `"purpose": "any

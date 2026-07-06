@@ -6,10 +6,12 @@ export default function Header({ onAddSeries }) {
     <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6 sm:py-4">
         <Link to="/" className="flex items-center gap-2 text-text">
-          <span className="text-base font-semibold tracking-tight sm:hidden">💙💜</span>
-          <span className="hidden text-lg font-semibold tracking-tight sm:inline">
-            💙💜 TV Series Tracker
-          </span>
+          <img
+            src={`${import.meta.env.BASE_URL}icon-512.png`}
+            alt="TV Series Tracker"
+            className="h-7 w-7 shrink-0 sm:h-8 sm:w-8"
+          />
+          <span className="hidden text-lg font-semibold tracking-tight sm:inline">TV Series Tracker</span>
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
           <Link to="/" className="text-sm font-medium text-muted hover:text-text">
