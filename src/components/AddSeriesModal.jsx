@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Modal from './Modal'
+import CloseIcon from './CloseIcon'
 import { posterUrl, searchShows, getShowDetails, getEpisodeDurations, tmdbConfigured } from '../lib/tmdb'
 import { useVault, newManualId, tmdbSeriesId } from '../store/VaultContext'
 
@@ -246,7 +247,7 @@ function ManualTab({ onClose }) {
                   aria-label="Rimuovi stagione"
                   className="ml-auto rounded-full p-1.5 text-muted hover:bg-surface-hover hover:text-danger"
                 >
-                  ✕
+                  <CloseIcon />
                 </button>
               )}
             </div>

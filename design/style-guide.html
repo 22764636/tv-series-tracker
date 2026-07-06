@@ -150,7 +150,7 @@
   <tr><td>Text link / low-emphasis action</td><td><code class="class">text-accent hover:underline</code> (e.g. "Segna tutta vista")</td></tr>
   <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
   <tr><td>Status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>.</td></tr>
-  <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill. Below <code class="class">sm</code>, the row is <code class="class">grid grid-cols-7 gap-1</code> (7 equal-width columns dividing the real available width, guaranteeing one row on any device — a fixed <code class="class">w-10</code> px width was tried first and wrapped to two rows on some phones) with pills at <code class="class">rounded-full border py-1 text-xs font-medium</code>; at <code class="class">sm</code> and up it switches to <code class="class">flex flex-wrap gap-1.5</code> with fixed-width <code class="class">sm:w-28 sm:text-sm</code> pills, since desktop has room to spare. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
+  <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill. <code class="class">grid grid-cols-7 gap-1 sm:gap-1.5</code> at <strong>every</strong> breakpoint, not just mobile — 7 equal-width columns dividing the real available container width, guaranteeing one row regardless of viewport. Two earlier fixed-width attempts (<code class="class">w-10</code> on mobile, then <code class="class">sm:w-28</code> on desktop) each wrapped to two rows on some real device/viewport the test setup hadn't covered; removing the breakpoint-specific fixed width entirely removes that whole class of bug. Pills: <code class="class">rounded-full border py-1 text-xs font-medium sm:text-sm</code>; only the label text switches by breakpoint (short 1-2 letter vs full day name), never the column width. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
 </table>
 
 <h2>Status badges</h2>
@@ -236,32 +236,53 @@
   opposite the badge, instead of just trailing it.
 </p>
 
-<h2>Title-row icon buttons (Aggiorna da TMDB / Elimina serie)</h2>
+<h2>Icon family (Search / Refresh / Close / Share)</h2>
+<p class="lede">
+  <code class="class">SearchIcon.jsx</code>, <code class="class">RefreshIcon.jsx</code>,
+  <code class="class">CloseIcon.jsx</code> and <code class="class">ShareIcon.jsx</code> are deliberately one visual
+  family — <code class="class">viewBox="0 0 24 24"</code>, <code class="class">stroke="currentColor"</code>,
+  <code class="class">stroke-width="2"</code>, <code class="class">stroke-linecap="round"</code> — instead of mixing
+  hand-drawn SVGs with Unicode text glyphs (<code class="class">↻</code>, <code class="class">✕</code>) as earlier
+  versions did: those glyphs render inconsistently across device fonts (often visibly smaller/thinner than other
+  icons at matched font-size), and even after fixing the size, a font glyph and a hand-drawn SVG still don't
+  <em>look</em> like the same design language. <code class="class">CloseIcon.jsx</code> replaces every <code
+  class="class">✕</code> in the app (Modal close button, SeriesDetail delete button, search clear buttons, remove
+  season row in AddSeriesModal) — one component, one look, wherever an "X" close/remove/clear action appears.
+  <code class="class">RefreshIcon.jsx</code> is the classic two-arrow circular refresh (<code
+  class="class">refresh-cw</code>), not a single 270° arc with one arrowhead tucked in a corner — more symmetric and
+  reads as "refresh" faster at a glance. <code class="class">ShareIcon.jsx</code> is the three-node share glyph.
+</p>
+<div class="row" style="align-items:center; gap:10px">
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </button>
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9a8.5 8.5 0 0 1 14-3.5L21 9"/><polyline points="21 3 21 9 15 9"/><path d="M20.5 15a8.5 8.5 0 0 1-14 3.5L3 15"/><polyline points="3 21 3 15 9 15"/></svg>
+  </button>
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+  </button>
+</div>
+
+<h2>Title-row icon buttons (Condividi / Aggiorna da TMDB / Elimina serie)</h2>
 <p class="lede">
   Right-aligned in the same flex row as the <code class="class">&lt;h1&gt;</code> title
-  (<code class="class">flex items-start justify-between</code>): both
-  <code class="class">flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-hover
-  active:bg-surface-hover</code> — a fixed box rather than content-driven padding, so the two buttons are the same
-  size regardless of glyph. Refresh hovers/actives to <code class="class">text-accent</code>, delete to
-  <code class="class">text-danger</code>; both get the same <code class="class">active:</code> treatment as
-  <code class="class">hover:</code> since hover never fires on touch — without it, tapping on mobile gave no visual
-  feedback at all. Delete uses the plain Unicode text symbol <code class="class">✕</code> (not emoji, same character
-  as the Modal close button). Refresh uses <code class="class">RefreshIcon.jsx</code>, an inline SVG (18×18px,
-  <code class="class">stroke="currentColor"</code>) — not the Unicode <code class="class">↻</code> character tried
-  first: that glyph rendered inconsistently across devices/fonts (often visibly smaller/thinner than ✕ at matched
-  font-size), and no text-size class reliably fixed it on every real device. An SVG with explicit pixel dimensions
-  sidesteps font rendering entirely. There's no non-emoji Unicode magnifying glass either, which is why the search
-  icon below is also an inline SVG. Refresh
-  (<code class="class">series.source === 'tmdb'</code> only) spins (<code class="class">animate-spin</code>) while
-  pending; an error renders as a <code class="class">text-xs text-danger</code> line just under the title row, no
-  modal/toast. Delete opens <code class="class">ConfirmDeleteModal</code> (below) instead of acting immediately.
+  (<code class="class">flex items-start justify-between</code>), in this order (least to most destructive): Condividi,
+  Aggiorna (TMDB series only), Elimina. All three <code class="class">flex h-8 w-8 items-center justify-center
+  rounded-full text-muted hover:bg-surface-hover active:bg-surface-hover</code> — a fixed box rather than
+  content-driven padding, so every button is the same size regardless of icon. Share/refresh hover/active to
+  <code class="class">text-accent</code>, delete to <code class="class">text-danger</code>; all three get the same
+  <code class="class">active:</code> treatment as <code class="class">hover:</code> since hover never fires on touch.
+  Refresh (<code class="class">series.source === 'tmdb'</code> only) spins (<code class="class">animate-spin</code>)
+  while pending; an error renders as a <code class="class">text-xs text-danger</code> line just under the title row,
+  no modal/toast. Share calls <code class="class">navigator.share</code> when available, else falls back to
+  <code class="class">navigator.clipboard.writeText</code> with a confirmation line in that same spot ("Link copiato
+  negli appunti" / an error message if the clipboard write itself fails). Delete opens
+  <code class="class">ConfirmDeleteModal</code> (below) instead of acting immediately.
 </p>
-<div class="row" style="align-items:center; gap:6px">
-  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
-  </button>
-  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">✕</button>
-</div>
 
 <h2>Wikipedia links (SeriesDetail)</h2>
 <p class="lede">
@@ -309,8 +330,8 @@
   pattern as the desktop dropdown, just full-width inside the modal instead of an anchored popover.
 </p>
 <p class="lede">
-  Both variants get a clear (✕) button inside the input, shown only once there's text, positioned
-  <code class="class">absolute right-2(.5) top-1/2 -translate-y-1/2</code>.
+  Both variants get a clear (<code class="class">CloseIcon.jsx</code>) button inside the input, shown only once
+  there's text, positioned <code class="class">absolute right-2(.5) top-1/2 -translate-y-1/2</code>.
 </p>
 
 <h2>Per-episode rating + duration rows (SeasonBlock)</h2>

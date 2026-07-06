@@ -5,6 +5,8 @@ import ProgressBar from '../components/ProgressBar'
 import RatingChart from '../components/RatingChart'
 import Modal from '../components/Modal'
 import RefreshIcon from '../components/RefreshIcon'
+import CloseIcon from '../components/CloseIcon'
+import ShareIcon from '../components/ShareIcon'
 import {
   progressRatio,
   totalEpisodes,
@@ -42,6 +44,7 @@ export default function SeriesDetail() {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [shareMessage, setShareMessage] = useState(null)
 
   if (!series) {
     return (
@@ -77,6 +80,28 @@ export default function SeriesDetail() {
     navigate('/')
   }
 
+  async function handleShare() {
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: series.title, url })
+      } catch {
+        // User dismissed the native share sheet — not an error.
+      }
+      return
+    }
+    // Most desktop browsers don't implement navigator.share: fall back to
+    // copying the link, with a brief confirmation since there's no share
+    // sheet to give that feedback for us.
+    try {
+      await navigator.clipboard.writeText(url)
+      setShareMessage('Link copiato negli appunti')
+    } catch {
+      setShareMessage('Impossibile copiare il link')
+    }
+    setTimeout(() => setShareMessage(null), 2000)
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <button onClick={() => navigate('/')} className="mb-4 text-sm text-muted hover:text-text">
@@ -98,6 +123,14 @@ export default function SeriesDetail() {
           <div className="flex items-start justify-between gap-2">
             <h1 className="text-xl font-semibold text-text sm:text-2xl">{series.title}</h1>
             <div className="flex shrink-0 items-center gap-1">
+              <button
+                onClick={handleShare}
+                aria-label="Condividi serie"
+                title="Condividi serie"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-hover hover:text-accent active:bg-surface-hover"
+              >
+                <ShareIcon />
+              </button>
               {series.source === 'tmdb' && (
                 <button
                   onClick={handleRefresh}
@@ -115,13 +148,14 @@ export default function SeriesDetail() {
                 onClick={() => setShowDeleteConfirm(true)}
                 aria-label="Elimina serie"
                 title="Elimina serie"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-base leading-none text-muted hover:bg-surface-hover hover:text-danger active:bg-surface-hover"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-hover hover:text-danger active:bg-surface-hover"
               >
-                ✕
+                <CloseIcon size={18} />
               </button>
             </div>
           </div>
           {refreshError && <p className="text-xs text-danger">{refreshError}</p>}
+          {shareMessage && <p className="text-xs text-muted">{shareMessage}</p>}
 
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(STATUS_META).map(([key, meta]) => {
@@ -408,12 +442,17 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
   return (
     <div>
       <p className="mb-1.5 text-sm font-medium text-text">Giorni di visione</p>
-      {/* grid-cols-7 on mobile divides the actual available width into 7
-          equal columns, guaranteeing one row on any real device — a fixed
-          px width (e.g. w-10) only fits whatever viewport it was tuned
-          against and silently wraps on narrower phones. Desktop has room
-          to spare, so it switches to a flex row of fixed-width pills. */}
-      <div className="grid grid-cols-7 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
+      {/* grid-cols-7 at every breakpoint (not just mobile) divides the
+          actual available width into 7 equal columns, guaranteeing one row
+          regardless of container width — a fixed px width (w-10, then
+          sm:w-28) only fits whatever viewport it was tuned against and
+          silently wraps to two rows the moment the real container is
+          narrower (confirmed happening on desktop too: "request desktop
+          site" on a phone reports a wide viewport but the app's own
+          max-w-3xl container is still narrower than 7 fixed sm:w-28 pills
+          need). Using the same grid mechanism everywhere means there's no
+          breakpoint left where a fixed-width guess can quietly break again. */}
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
         {WEEKDAYS.map(({ key, shortLabel, fullLabel }) => {
           const active = days.includes(key)
           return (
@@ -421,7 +460,7 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
               key={key}
               disabled={locked}
               onClick={() => toggleDay(key)}
-              className={`rounded-full border py-1 text-xs font-medium transition-colors sm:w-28 sm:text-sm ${
+              className={`rounded-full border py-1 text-xs font-medium transition-colors sm:text-sm ${
                 active
                   ? 'border-accent-solid bg-accent-solid text-white'
                   : locked
