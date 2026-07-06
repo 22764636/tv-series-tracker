@@ -5,18 +5,14 @@ export default function Header({ onAddSeries }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6 sm:py-4">
-        <Link to="/" className="flex items-center gap-2 text-text">
+        <Link to="/" aria-label="TV Series Tracker" className="shrink-0">
           <img
             src={`${import.meta.env.BASE_URL}icon-512.png`}
             alt="TV Series Tracker"
-            className="h-7 w-7 shrink-0 sm:h-8 sm:w-8"
+            className="h-9 w-9 sm:h-10 sm:w-10"
           />
-          <span className="hidden text-lg font-semibold tracking-tight sm:inline">TV Series Tracker</span>
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
-          <Link to="/" className="text-sm font-medium text-muted hover:text-text">
-            Libreria
-          </Link>
           <Link to="/calendario" className="text-sm font-medium text-muted hover:text-text">
             Calendario
           </Link>
