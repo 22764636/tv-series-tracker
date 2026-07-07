@@ -538,13 +538,24 @@ dal codice reale è peggio che non averla.
   filtri di stato, che riusa `upcomingCalendarEntries` (`schedule.js` — la
   stessa proiezione su cui è costruito il Calendario) filtrata alla sola
   data di oggi, mostrando ogni serie con un episodio non ancora visto
-  previsto oggi tramite lo stesso `SeriesCard` della griglia principale
-  (azione rapida "Segna SxEy" già inclusa, nessun componente nuovo).
-  **Sempre visibile indipendentemente dal filtro di stato/ordinamento**
-  scelto sotto: non è una vista filtrata della libreria, è un richiamo
-  fisso "cosa guardare oggi" — nascosta del tutto quando non c'è nessuna
-  serie in programma oggi, stesso principio "nascondi se vuoto" usato
-  altrove (tempo rimanente, sezione voto).
+  previsto oggi. **Sempre visibile indipendentemente dal filtro di
+  stato/ordinamento** scelto sotto: non è una vista filtrata della
+  libreria, è un richiamo fisso "cosa guardare oggi" — nascosta del tutto
+  quando non c'è nessuna serie in programma oggi, stesso principio
+  "nascondi se vuoto" usato altrove (tempo rimanente, sezione voto).
+  - **Righe in stile lista (`TodayListItem`), non `SeriesCard`**: una
+    piccola miniatura (`h-11 w-11`, non il poster intero) invece della
+    card verticale piena — scelta esplicita dell'utente perché questa
+    sezione siede sopra un'intera pagina di card e non deve competere
+    visivamente con quella griglia allo stesso modo di una seconda
+    griglia di card. Tutte le informazioni della card sono comunque
+    presenti, solo re-impaginate su due righe per riga di lista invece di
+    scomparire: riga 1 = titolo (troncato) + bottone link esterno 🔗 (se
+    presente, stesso comportamento/icona di `SeriesCard`) + `StatusBadge`;
+    riga 2 = `ProgressBar` + conteggio "X/Y" + bottone rapido "Segna
+    SxEy". Componente locale in `Home.jsx` (non un file separato: uso
+    unico, solo in questa sezione), che riusa `ProgressBar`/`StatusBadge`
+    condivisi invece di reinventarli.
 - **Layout `SeriesDetail.jsx`**: titolo, pillole di stato, barra di
   progresso (+ episodi visti/tempo rimanente), link, Wikipedia restano
   nella colonna stretta accanto al poster (l'header "di identità" della
