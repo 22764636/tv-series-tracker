@@ -376,14 +376,27 @@ dal codice reale è peggio che non averla.
     rimosso quando il voto singolo è stato sostituito dai due cuori, quindi
     era sempre `undefined` e l'ordinamento non funzionava più.
   - Il **voto totale** (riga "Valutazione: X/10" + i due `HeartRating` in
-    cima alla pagina serie) resta visibile/modificabile **solo** quando lo
-    stato della serie è "Completata" (non anche "In attesa di nuova
-    stagione") — questa parte è invariata rispetto a prima. Il voto **per
-    episodio**, invece, non ha questo vincolo (vedi sopra). Nessuno dei due
-    valori viene cancellato se lo stato cambia successivamente (stesso
-    comportamento non distruttivo del link).
-  - **Grafico voti per episodio** (`src/components/RatingChart.jsx`, sotto
-    il voto totale in `SeriesDetail.jsx`, solo se almeno un episodio ha un
+    cima alla pagina serie, `RatingRow` in `SeriesDetail.jsx`) resta
+    visibile/modificabile **solo** quando lo stato della serie è
+    "Completata" (non anche "In attesa di nuova stagione") **e** non esiste
+    già un grafico voti per episodio (`chartData.length === 0`, prop
+    `hasChart` passata a `RatingRow`). Appena esiste almeno un voto per
+    episodio il grafico compare (vedi sotto) e questa riga sparisce del
+    tutto — la legenda sempre visibile sopra il grafico mostra già gli
+    stessi identici valori (💙/💜/Media), quindi tenerla sarebbe
+    duplicazione pura. Resta l'**unica** UI di visualizzazione/modifica del
+    voto totale per una serie "Completata" senza nessun voto per episodio
+    (es. serie aggiunta già vista, niente da votare episodio per episodio):
+    lì niente grafico esiste per cui fare da fonte alternativa, quindi non
+    va nascosta. Il voto **per episodio**, invece, non ha nessuno di questi
+    vincoli (vedi sopra). Nessuno dei due valori viene cancellato se lo
+    stato cambia successivamente o se compaiono voti per episodio (stesso
+    comportamento non distruttivo del link) — solo la riga smette di essere
+    mostrata, il dato resta e ricompare se la condizione torna vera (es. si
+    rimuove l'ultimo voto per episodio).
+  - **Grafico voti per episodio** (`src/components/RatingChart.jsx`, al
+    posto del voto totale in `SeriesDetail.jsx` quando presente, solo se
+    almeno un episodio ha un
     voto): grafico a linee responsive, senza libreria esterna (SVG
     disegnato a mano con `viewBox`). **Larghezza reattiva ma unità sempre
     fisse**: il contenitore (`overflow-x-auto`) viene misurato con

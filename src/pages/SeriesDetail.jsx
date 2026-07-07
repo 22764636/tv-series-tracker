@@ -229,7 +229,11 @@ export default function SeriesDetail() {
 
         {showRatingSection && (
           <div className="rounded-2xl border border-border bg-surface p-4">
-            <RatingRow series={series} onSetRating={(heart, rating) => setRating(series.id, heart, rating)} />
+            <RatingRow
+              series={series}
+              onSetRating={(heart, rating) => setRating(series.id, heart, rating)}
+              hasChart={chartData.length > 0}
+            />
             {chartData.length > 0 && (
               <RatingChartSection
                 series={series}
@@ -237,7 +241,6 @@ export default function SeriesDetail() {
                 totalBlue={series.ratingBlue}
                 totalPurple={series.ratingPurple}
                 totalAverage={averageRating(series)}
-                className={series.status === 'completed' ? 'mt-4' : ''}
               />
             )}
           </div>
@@ -492,8 +495,8 @@ function WatchDaysRow({ series, locked, onSetWatchDays }) {
   )
 }
 
-function RatingRow({ series, onSetRating }) {
-  if (series.status !== 'completed') return null
+function RatingRow({ series, onSetRating, hasChart }) {
+  if (series.status !== 'completed' || hasChart) return null
 
   const rating = averageRating(series)
 
