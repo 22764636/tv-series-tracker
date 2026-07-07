@@ -385,26 +385,41 @@ dal codice reale è peggio che non averla.
   - **Grafico voti per episodio** (`src/components/RatingChart.jsx`, sotto
     il voto totale in `SeriesDetail.jsx`, solo se almeno un episodio ha un
     voto): grafico a linee responsive, senza libreria esterna (SVG
-    disegnato a mano con `viewBox`). **Dimensione fissa in pixel** pari al
-    viewBox (`style={{ width, height: HEIGHT }}`, mai `width: 100%` +
-    `min-width`): bug reale corretto — con una percentuale, l'intero
-    sistema di coordinate (font-size delle etichette, spessore linee,
-    raggio dei pallini, tutti espressi in unità SVG "fisse") veniva
-    riscalato per riempire il contenitore, quindi una serie con pochi
-    episodi votati (grafico naturalmente stretto) su una card desktop
-    larga produceva etichette e pallini enormi e sfocati — "standard"
-    voleva dire proprio evitare questo, non renderlo sempre a larghezza
-    piena. Con dimensione fissa, 1 unità SVG = 1px sempre: un grafico con
-    pochi punti resta più stretto (spazio vuoto a destra nella card,
-    normale) invece di essere gonfiato; scorre orizzontalmente
-    (`overflow-x-auto`) solo quando serve più spazio di quanto il
-    contenitore offre. Un punto per episodio votato con tre linee — 💙,
+    disegnato a mano con `viewBox`). **Larghezza reattiva ma unità sempre
+    fisse**: il contenitore (`overflow-x-auto`) viene misurato con
+    `ResizeObserver` e quel valore è il **pavimento** della larghezza del
+    grafico (`Math.max(280, containerWidth, neededWidth)`, dove
+    `neededWidth` dipende da quanti punti ci sono e dallo zoom) — il
+    grafico riempie sempre lo spazio disponibile nella card invece di stare
+    sempre alla sua larghezza minima "clippato" in un angolo, e cresce oltre
+    il contenitore (attivando lo scroll orizzontale) solo quando i punti
+    (o lo zoom) hanno davvero bisogno di più spazio di quanto offerto.
+    Fondamentale: l'SVG non usa **mai** `width: 100%` — il suo `style`
+    (`width`, `height: HEIGHT`) combacia sempre esattamente col `viewBox`,
+    quindi 1 unità SVG = 1px reale **sempre**, a prescindere da quanto è
+    largo il contenitore o quanti punti ci sono. Bug reale corretto: prima
+    di questa architettura, `width: 100%` riscalava l'intero sistema di
+    coordinate (font-size delle etichette, spessore linee, raggio dei
+    pallini — tutti espressi in unità SVG "fisse") per riempire il
+    contenitore, quindi una serie con pochi episodi votati produceva
+    etichette e pallini enormi e sfocati su una card desktop larga. Un
+    primo tentativo di correzione fissava la larghezza SOLO al minimo
+    necessario per i punti (niente più elementi giganti, ma il grafico
+    restava piccolo/clippato anche quando la card aveva ovviamente più
+    spazio) — la versione corretta doveva essere reattiva **e** con unità
+    fisse insieme, non l'una o l'altra. Un punto per episodio votato con tre linee — 💙,
     💜 e una linea tratteggiata "Media" in grigio (`--color-muted`) perché
     è un valore derivato, non un terzo voto. Sopra al grafico, una riga
     sempre visibile (non solo in hover) mostra i totali correnti —
     "💙 X/10", "💜 X/10", "Media X/10" — passati come props
     (`totalBlue`/`totalPurple`/`totalAverage`) calcolati dal chiamante con
     gli helper di `progress.js`, mai ricalcolati dentro il componente.
+    **Ogni voce della legenda è cliccabile** per nascondere/mostrare quella
+    linea (utile per isolare il voto di una sola persona senza che l'altra
+    linea ci passi sopra) — `opacity-40` sulla legenda quando nascosta,
+    linea e pallini rimossi dal grafico, e il valore corrispondente
+    escluso anche dal tooltip hover (non solo dal grafico), così la "vista
+    tabellare" del tooltip resta coerente con cosa è davvero visibile.
     Crosshair + tooltip al passaggio del mouse/tocco (valori sempre
     visibili anche senza hover nelle righe per-episodio sopra, che fanno da
     "vista tabellare"). **Supporto touch**: oltre a `onPointerDown`/
@@ -425,22 +440,35 @@ dal codice reale è peggio che non averla.
     orizzontale come "gestito da script", il che impediva anche allo
     scroll orizzontale nativo del contenitore `overflow-x-auto` di
     funzionare, bloccando di fatto la visione di episodi oltre quelli
-    visibili nella larghezza iniziale su schermi stretti. Nessuno di
-    questi handler chiama mai `preventDefault`, quindi il valore
-    predefinito (`auto`, gestione nativa su entrambi gli assi) già lascia
-    scorrere correttamente sia il grafico in orizzontale sia la pagina in
-    verticale, mentre il crosshair continua ad aggiornarsi in
-    contemporanea via `touchmove`. **Zoom** (bottoni "−"/"+", `zoom` da
-    0.6× a 2× in passi di 0.2, moltiplica `MIN_POINT_SPACING`): utile
-    tanto su mobile (episodi ravvicinati, difficili da toccare
-    singolarmente) quanto su desktop (serie con molti episodi, vedere più
-    punti insieme riducendo lo zoom) — per questo non è limitato a un solo
-    breakpoint. I bottoni stanno in una riga propria sotto la legenda
-    (`flex-col` mobile, `sm:flex-row` desktop) invece che dentro la
-    stessa riga `flex-wrap` della legenda: messi lì in un primo tentativo,
-    competevano per lo stesso spazio della legenda su schermi stretti e
-    finivano per farla tornare a capo su due righe — lo stesso identico
-    bug che si stava correggendo, solo spostato. **Filtri** (solo se la
+    visibili nella larghezza iniziale su schermi stretti.
+  - **Zoom**: pinch a due dita su mobile, rotellina del mouse su desktop —
+    non più bottoni "−"/"+" su schermo, rimossi su richiesta esplicita
+    dell'utente (competevano con la legenda per lo spazio su mobile e
+    avevano causato proprio loro il bug "la legenda va a capo" descritto
+    sopra, spostandolo invece di risolverlo). `zoom` da 0.6× a 2× in passi
+    di 0.2, moltiplica `MIN_POINT_SPACING`: utile tanto su mobile (episodi
+    ravvicinati, difficili da toccare singolarmente) quanto su desktop
+    (serie con molti episodi, vedere più punti insieme riducendo lo zoom).
+    **Listener nativi, non le prop JSX `onWheel`/`onTouchStart`/
+    `onTouchMove`/`onTouchEnd`** (`svg.addEventListener(..., { passive:
+    false })` dentro un `useEffect`, richiamato quando cambiano
+    `zoom`/`data`/dimensioni): bug reale scoperto testando — React registra
+    i listener `wheel`/`touch*` come passivi di default, quindi
+    `e.preventDefault()` chiamato da una prop JSX come `onWheel` viene
+    **ignorato silenziosamente** (in console: "Unable to preventDefault
+    inside passive event listener invocation", non un errore che blocca
+    l'esecuzione). Risultato osservato: la rotellina cambiava lo zoom MA
+    il browser scrollava comunque nativamente il grafico in orizzontale
+    sotto al puntatore fermo — al tick di rotellina successivo il cursore
+    non era più sopra l'SVG (ora scrollato altrove) e ogni evento
+    successivo veniva perso in silenzio, quindi si poteva zoomare "in" ma
+    mai più tornare indietro. Un `addEventListener` esplicito con
+    `passive: false` è l'unico modo per bloccare davvero il comportamento
+    di default del browser in questo caso; lo stesso vale per il touch a
+    due dita (altrimenti lo zoom nativo della pagina interferirebbe col
+    pinch). Il singolo dito (crosshair, scroll) resta come prima — non
+    chiama mai `preventDefault`, quindi lo scroll nativo continua a
+    funzionare in entrambe le direzioni. **Filtri** (solo se la
     serie ha più di una stagione, gestiti in `RatingChartSection` dentro
     `SeriesDetail.jsx`, non dentro `RatingChart.jsx` che resta un
     componente "dumb" che disegna solo i dati ricevuti): "Tutti gli
@@ -516,13 +544,24 @@ dal codice reale è peggio che non averla.
   filtri di stato, che riusa `upcomingCalendarEntries` (`schedule.js` — la
   stessa proiezione su cui è costruito il Calendario) filtrata alla sola
   data di oggi, mostrando ogni serie con un episodio non ancora visto
-  previsto oggi tramite lo stesso `SeriesCard` della griglia principale
-  (azione rapida "Segna SxEy" già inclusa, nessun componente nuovo).
-  **Sempre visibile indipendentemente dal filtro di stato/ordinamento**
-  scelto sotto: non è una vista filtrata della libreria, è un richiamo
-  fisso "cosa guardare oggi" — nascosta del tutto quando non c'è nessuna
-  serie in programma oggi, stesso principio "nascondi se vuoto" usato
-  altrove (tempo rimanente, sezione voto).
+  previsto oggi. **Sempre visibile indipendentemente dal filtro di
+  stato/ordinamento** scelto sotto: non è una vista filtrata della
+  libreria, è un richiamo fisso "cosa guardare oggi" — nascosta del tutto
+  quando non c'è nessuna serie in programma oggi, stesso principio
+  "nascondi se vuoto" usato altrove (tempo rimanente, sezione voto).
+  - **Righe in stile lista (`TodayListItem`), non `SeriesCard`**: una
+    piccola miniatura (`h-11 w-11`, non il poster intero) invece della
+    card verticale piena — scelta esplicita dell'utente perché questa
+    sezione siede sopra un'intera pagina di card e non deve competere
+    visivamente con quella griglia allo stesso modo di una seconda
+    griglia di card. Tutte le informazioni della card sono comunque
+    presenti, solo re-impaginate su due righe per riga di lista invece di
+    scomparire: riga 1 = titolo (troncato) + bottone link esterno 🔗 (se
+    presente, stesso comportamento/icona di `SeriesCard`) + `StatusBadge`;
+    riga 2 = `ProgressBar` + conteggio "X/Y" + bottone rapido "Segna
+    SxEy". Componente locale in `Home.jsx` (non un file separato: uso
+    unico, solo in questa sezione), che riusa `ProgressBar`/`StatusBadge`
+    condivisi invece di reinventarli.
 - **Layout `SeriesDetail.jsx`**: titolo, pillole di stato, barra di
   progresso (+ episodi visti/tempo rimanente), link, Wikipedia restano
   nella colonna stretta accanto al poster (l'header "di identità" della

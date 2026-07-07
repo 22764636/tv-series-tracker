@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import SeriesCard from '../components/SeriesCard'
 import StatusTabs from '../components/StatusTabs'
 import EmptyState from '../components/EmptyState'
-import { averageRating, progressRatio } from '../lib/progress'
+import ProgressBar from '../components/ProgressBar'
+import StatusBadge from '../components/StatusBadge'
+import { averageRating, nextEpisode, progressRatio, totalEpisodes, watchedCount } from '../lib/progress'
 import { upcomingCalendarEntries, dateKey } from '../lib/schedule'
 
 const SORT_OPTIONS = [
@@ -90,9 +92,9 @@ export default function Home() {
       {todaySeries.length > 0 && (
         <div className="mb-6">
           <h2 className="mb-3 text-sm font-semibold text-text">Da vedere oggi</h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="flex flex-col gap-2">
             {todaySeries.map((s) => (
-              <SeriesCard key={s.id} series={s} />
+              <TodayListItem key={s.id} series={s} />
             ))}
           </div>
         </div>
@@ -134,5 +136,75 @@ export default function Home() {
         </div>
       )}
     </div>
+  )
+}
+
+// Compact list row for "Da vedere oggi" — a small thumbnail instead of the
+// full poster, with everything the grid's SeriesCard shows (status, external
+// link, progress, episode count, quick-mark action) re-flowed across two
+// lines instead of dropped, since this list sits above a whole page of
+// cards and shouldn't visually compete with it the same way a second card
+// grid would.
+function TodayListItem({ series }) {
+  const { toggleEpisode } = useVault()
+  const next = nextEpisode(series)
+  const total = totalEpisodes(series)
+
+  function markNextWatched(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (next) toggleEpisode(series.id, next.season, next.episode, true)
+  }
+
+  return (
+    <Link
+      to={`/serie/${series.id}`}
+      className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3 transition-colors hover:bg-surface-hover"
+    >
+      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-surface-hover">
+        {series.posterPath ? (
+          <img src={series.posterPath} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted">
+            {series.title.slice(0, 1).toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate text-sm font-semibold text-text">{series.title}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            {series.link && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  window.open(series.link, '_blank', 'noopener,noreferrer')
+                }}
+                aria-label="Link esterno"
+                className="text-muted hover:text-accent"
+              >
+                🔗
+              </button>
+            )}
+            <StatusBadge status={series.status} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <ProgressBar ratio={progressRatio(series)} className="flex-1" />
+          <span className="shrink-0 text-xs text-muted">
+            {watchedCount(series)}/{total}
+          </span>
+          {next && series.status !== 'dropped' && (
+            <button
+              onClick={markNextWatched}
+              className="shrink-0 rounded-full bg-accent-solid px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-accent-solid-hover"
+            >
+              Segna S{next.season}E{next.episode}
+            </button>
+          )}
+        </div>
+      </div>
+    </Link>
   )
 }
