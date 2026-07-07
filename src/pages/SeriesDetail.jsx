@@ -16,6 +16,10 @@ import {
   averageRating,
   formatRating,
   episodeRatingChartData,
+  seasonRatingChartData,
+  episodeAcrossSeasonsChartData,
+  ratedEpisodeNumbers,
+  heartFullyRated,
   remainingMinutes,
   formatDuration,
 } from '../lib/progress'
@@ -62,6 +66,13 @@ export default function SeriesDetail() {
   const chartData = episodeRatingChartData(series)
   const remaining = remainingMinutes(series)
   const showRatingSection = series.status === 'completed' || chartData.length > 0
+  // Watch-day scheduling only matters while there's still an upcoming episode
+  // to plan around — once a series is finished, dropped, or waiting on a
+  // future season with nothing airing yet, there's nothing left to schedule,
+  // so the section just takes up space that episodes/ratings need more.
+  // watchDays itself is untouched in the data, so it reappears (and stays
+  // editable) if the status ever moves back to "watching"/"planned".
+  const showWatchDays = !['completed', 'renewed', 'dropped'].includes(series.status)
 
   async function handleRefresh() {
     setRefreshing(true)
@@ -206,20 +217,23 @@ export default function SeriesDetail() {
       )}
 
       <div className="mt-6 flex flex-col gap-4">
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <WatchDaysRow
-            series={series}
-            locked={locked}
-            onSetWatchDays={(days) => setWatchDays(series.id, days)}
-          />
-        </div>
+        {showWatchDays && (
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <WatchDaysRow
+              series={series}
+              locked={locked}
+              onSetWatchDays={(days) => setWatchDays(series.id, days)}
+            />
+          </div>
+        )}
 
         {showRatingSection && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <RatingRow series={series} onSetRating={(heart, rating) => setRating(series.id, heart, rating)} />
             {chartData.length > 0 && (
-              <RatingChart
-                data={chartData}
+              <RatingChartSection
+                series={series}
+                fullData={chartData}
                 totalBlue={series.ratingBlue}
                 totalPurple={series.ratingPurple}
                 totalAverage={averageRating(series)}
@@ -493,18 +507,25 @@ function RatingRow({ series, onSetRating }) {
           label="💙"
           value={series.ratingBlue}
           onSave={(v) => onSetRating('blue', v)}
+          locked={heartFullyRated(series, 'blue')}
         />
         <HeartRating
           label="💜"
           value={series.ratingPurple}
           onSave={(v) => onSetRating('purple', v)}
+          locked={heartFullyRated(series, 'purple')}
         />
       </div>
     </div>
   )
 }
 
-function HeartRating({ label, value, onSave }) {
+// `locked` (only ever passed for the series-level total in RatingRow, never
+// for a per-episode rating) hides the edit control once every episode
+// already has that heart rated — see heartFullyRated() in progress.js for
+// why editing must stop there instead of just letting the next episode
+// rating silently overwrite it.
+function HeartRating({ label, value, onSave, locked = false }) {
   const [editing, setEditing] = useState(false)
   const [input, setInput] = useState(value ?? '')
 
@@ -519,7 +540,7 @@ function HeartRating({ label, value, onSave }) {
     setEditing(false)
   }
 
-  if (editing) {
+  if (editing && !locked) {
     return (
       <form onSubmit={save} className="flex items-center gap-2 text-sm">
         <span>{label}</span>
@@ -552,18 +573,22 @@ function HeartRating({ label, value, onSave }) {
     return (
       <div className="flex items-center gap-2 text-sm">
         <span className="text-text">{label} {formatRating(value)}/10</span>
-        <button
-          onClick={() => {
-            setInput(value)
-            setEditing(true)
-          }}
-          className="text-xs text-muted hover:text-text"
-        >
-          Modifica
-        </button>
+        {!locked && (
+          <button
+            onClick={() => {
+              setInput(value)
+              setEditing(true)
+            }}
+            className="text-xs text-muted hover:text-text"
+          >
+            Modifica
+          </button>
+        )}
       </div>
     )
   }
+
+  if (locked) return null
 
   return (
     <button
@@ -572,6 +597,83 @@ function HeartRating({ label, value, onSave }) {
     >
       {label} + Aggiungi
     </button>
+  )
+}
+
+// View picker for the rating chart: chronological (default), one season at a
+// time, or the same episode number compared across every season that has it
+// rated. Only shown for multi-season series — a single season has nothing to
+// filter by season or compare across seasons. `key` below (season/episode
+// selection baked into it) remounts RatingChart on every mode change, which
+// is what resets its zoom/hover state instead of carrying it over from a
+// completely different view.
+function RatingChartSection({ series, fullData, totalBlue, totalPurple, totalAverage, className }) {
+  const [mode, setMode] = useState('all')
+  const seasons = series.seasons.slice().sort((a, b) => a.number - b.number)
+  const episodeNumbers = ratedEpisodeNumbers(series)
+  const [season, setSeason] = useState(seasons[0]?.number ?? 1)
+  const [episode, setEpisode] = useState(episodeNumbers[0] ?? 1)
+
+  const data =
+    mode === 'season'
+      ? seasonRatingChartData(series, season)
+      : mode === 'episode'
+        ? episodeAcrossSeasonsChartData(series, episode)
+        : fullData
+
+  return (
+    <div className={className}>
+      {seasons.length > 1 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+          >
+            <option value="all">Tutti gli episodi</option>
+            <option value="season">Per stagione</option>
+            <option value="episode">Confronta stesso episodio tra stagioni</option>
+          </select>
+          {mode === 'season' && (
+            <select
+              value={season}
+              onChange={(e) => setSeason(Number(e.target.value))}
+              className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+            >
+              {seasons.map((s) => (
+                <option key={s.number} value={s.number}>
+                  Stagione {s.number}
+                </option>
+              ))}
+            </select>
+          )}
+          {mode === 'episode' && episodeNumbers.length > 0 && (
+            <select
+              value={episode}
+              onChange={(e) => setEpisode(Number(e.target.value))}
+              className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-accent"
+            >
+              {episodeNumbers.map((n) => (
+                <option key={n} value={n}>
+                  Episodio {n}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+      {data.length > 0 ? (
+        <RatingChart
+          key={`${mode}-${season}-${episode}`}
+          data={data}
+          totalBlue={totalBlue}
+          totalPurple={totalPurple}
+          totalAverage={totalAverage}
+        />
+      ) : (
+        <p className="text-sm text-muted">Nessun episodio valutato in questa vista.</p>
+      )}
+    </div>
   )
 }
 
@@ -597,6 +699,17 @@ function SeasonBlock({
     return watched || series.source === 'manual' || hasDuration
   })
   const seasonRemaining = remainingMinutes(series, season.number)
+  const [showUnwatchConfirm, setShowUnwatchConfirm] = useState(false)
+
+  function handleToggleSeasonClick() {
+    // Marking a whole season unwatched is meaningfully destructive (unlike
+    // marking it watched): it clears every episode's watched date, and
+    // re-marking later resets those dates to today, permanently losing the
+    // real viewing history — worth a confirmation, unlike the "mark all
+    // watched" direction which only ever adds data.
+    if (allWatched) setShowUnwatchConfirm(true)
+    else onToggleSeason(series.id, season.number, season.episodeCount, true)
+  }
 
   return (
     <div>
@@ -609,7 +722,7 @@ function SeasonBlock({
         </div>
         <button
           disabled={locked}
-          onClick={() => onToggleSeason(series.id, season.number, season.episodeCount, !allWatched)}
+          onClick={handleToggleSeasonClick}
           className={`text-xs font-medium ${
             locked
               ? 'cursor-not-allowed text-muted opacity-50'
@@ -619,6 +732,32 @@ function SeasonBlock({
           {allWatched ? 'Segna non vista' : 'Segna tutta vista'}
         </button>
       </div>
+      {showUnwatchConfirm && (
+        <Modal title="Segnare la stagione come non vista?" onClose={() => setShowUnwatchConfirm(false)}>
+          <p className="text-sm text-muted">
+            Tutti gli episodi della Stagione {season.number} torneranno "non visti" e le date di
+            visione registrate andranno perse. Se li segni di nuovo visti, la data sarà quella di
+            oggi, non quella originale.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={() => setShowUnwatchConfirm(false)}
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-text hover:bg-surface-hover"
+            >
+              Annulla
+            </button>
+            <button
+              onClick={() => {
+                onToggleSeason(series.id, season.number, season.episodeCount, false)
+                setShowUnwatchConfirm(false)
+              }}
+              className="rounded-full bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              Segna non vista
+            </button>
+          </div>
+        </Modal>
+      )}
       <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-8 md:grid-cols-10">
         {episodes.map((ep) => {
           const watched = Boolean(series.watched?.[episodeKey(season.number, ep)])

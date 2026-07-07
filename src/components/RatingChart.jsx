@@ -8,6 +8,9 @@ const PAD_TOP = 16
 const PAD_BOTTOM = 28
 const MIN_POINT_SPACING = 56
 const Y_TICKS = [2, 4, 6, 8, 10]
+const ZOOM_MIN = 0.6
+const ZOOM_MAX = 2
+const ZOOM_STEP = 0.2
 
 // Responsive, dependency-free SVG line chart: blue heart / purple heart
 // ratings per episode, plus their average. Colors come from --chart-blue/
@@ -18,9 +21,10 @@ const Y_TICKS = [2, 4, 6, 8, 10]
 // the per-episode rows above (the "table view" for this chart).
 export default function RatingChart({ data, totalBlue, totalPurple, totalAverage, className = '' }) {
   const [hoverIndex, setHoverIndex] = useState(null)
+  const [zoom, setZoom] = useState(1)
   const svgRef = useRef(null)
 
-  const width = Math.max(280, PAD_LEFT + PAD_RIGHT + (data.length - 1) * MIN_POINT_SPACING)
+  const width = Math.max(280, PAD_LEFT + PAD_RIGHT + (data.length - 1) * MIN_POINT_SPACING * zoom)
   const plotWidth = width - PAD_LEFT - PAD_RIGHT
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
 
@@ -65,6 +69,18 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
   // (confirmed with Playwright's touch emulation — the native DOM event
   // fires, but relying on pointerdown/pointermove alone missed it), so touch
   // gets its own explicit handler reading straight from the Touch API.
+  // Deliberately no touch-action restriction on the <svg> (bug fixed here):
+  // an earlier version set touch-action: pan-y specifically so a vertical
+  // page-scroll gesture wouldn't get eaten while touching the chart — but
+  // that also told the browser to treat horizontal swipes as script-only,
+  // which blocked the ancestor overflow-x-auto div's native horizontal
+  // scroll entirely (a real report: stuck unable to see episodes beyond
+  // what fit in the initial viewport on a longer season). None of these
+  // handlers ever call preventDefault, so the default touch-action (both
+  // axes handled natively) already lets the browser scroll each direction
+  // correctly on its own nearest scrollable ancestor — horizontal here,
+  // vertical on the page — while touchmove below still updates the
+  // crosshair concurrently.
   function handleTouch(e) {
     const touch = e.touches[0] ?? e.changedTouches[0]
     if (touch) updateHoverFromClientX(touch.clientX)
@@ -85,38 +101,83 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
 
   const hovered = hoverIndex != null ? data[hoverIndex] : null
 
+  function zoomOut() {
+    setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 10) / 10))
+  }
+  function zoomIn() {
+    setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 10) / 10))
+  }
+
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
-          <span className="text-text">
-            💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
+      {/* Zoom controls used to sit inline in the legend row (ml-auto), but
+          that made a 4th item compete for the same wrapping row and just
+          moved the "legend wraps to two rows on mobile" bug onto itself.
+          Splitting into its own row below on mobile (flex-col), merging
+          back into one row on desktop (sm:flex-row + sm:ml-auto), keeps the
+          legend's own wrap behavior exactly as tuned and gives zoom controls
+          a deliberate, predictable position instead of an overflow artifact. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-wrap items-center gap-3 text-xs sm:gap-4 sm:text-sm">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
+            <span className="text-text">
+              💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
+            </span>
           </span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
-          <span className="text-text">
-            💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
+            <span className="text-text">
+              💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
+            </span>
           </span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-0.5 w-4 rounded-full"
-            style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
-          />
-          <span className="text-muted">
-            Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-0.5 w-4 rounded-full"
+              style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
+            />
+            <span className="text-muted">
+              Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
+            </span>
           </span>
-        </span>
+        </div>
+        <div className="flex items-center gap-1 sm:ml-auto">
+          <button
+            type="button"
+            onClick={zoomOut}
+            disabled={zoom <= ZOOM_MIN}
+            aria-label="Riduci zoom"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted hover:bg-surface-hover disabled:opacity-40"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={zoomIn}
+            disabled={zoom >= ZOOM_MAX}
+            aria-label="Aumenta zoom"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted hover:bg-surface-hover disabled:opacity-40"
+          >
+            +
+          </button>
+        </div>
       </div>
 
+      {/* Fixed pixel width/height matching the viewBox exactly (1 unit = 1px),
+          not width:100% + min-width: a percentage width stretches the whole
+          coordinate system — including "fixed" font-size/stroke-width/dot
+          radius units — to fill the container, so a short chart (few rated
+          episodes) on a wide desktop card rendered comically oversized labels
+          and dots. A fixed size means "standard style" regardless of how many
+          episodes are rated: extra container width is just left empty rather
+          than used to blow up the chart. overflow-x-auto below still scrolls
+          when the chart is wider than its container (many episodes / zoomed in). */}
       <div className="overflow-x-auto">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${HEIGHT}`}
           className="block"
-          style={{ width: '100%', minWidth: width, height: 'auto', touchAction: 'pan-y' }}
+          style={{ width, height: HEIGHT }}
           onPointerDown={handlePointerMove}
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}

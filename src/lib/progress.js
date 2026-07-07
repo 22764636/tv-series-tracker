@@ -112,3 +112,57 @@ export function episodeRatingChartData(series) {
   }
   return data
 }
+
+// Same shape as episodeRatingChartData, but scoped to one season — feeds the
+// RatingChart's "per season" filter mode.
+export function seasonRatingChartData(series, seasonNumber) {
+  return episodeRatingChartData(series).filter((d) => d.season === seasonNumber)
+}
+
+// Cross-season comparison for one episode number (e.g. every season's E2):
+// one point per season that actually reaches that episode number and has it
+// rated, keyed by season ("S1", "S2", ...) instead of by episode — feeds the
+// RatingChart's "compare across seasons" filter mode. Seasons with fewer
+// episodes than the requested number, or with that episode unrated, are
+// simply skipped, same "exclude rather than assume 0" rule as elsewhere.
+export function episodeAcrossSeasonsChartData(series, episodeNumber) {
+  const data = []
+  for (const season of series.seasons.slice().sort((a, b) => a.number - b.number)) {
+    if (season.episodeCount < episodeNumber) continue
+    const key = episodeKey(season.number, episodeNumber)
+    const r = series.episodeRatings?.[key]
+    if (!r || (r.blue == null && r.purple == null)) continue
+    const avg = r.blue != null && r.purple != null ? (r.blue + r.purple) / 2 : r.blue ?? r.purple
+    data.push({ key: `S${season.number}`, season: season.number, episode: episodeNumber, blue: r.blue ?? null, purple: r.purple ?? null, avg })
+  }
+  return data
+}
+
+// Sorted list of every episode number that has at least one rating somewhere
+// in the series (regardless of season) — the options offered by the
+// "compare across seasons" episode picker.
+export function ratedEpisodeNumbers(series) {
+  const numbers = new Set()
+  for (const key of Object.keys(series.episodeRatings ?? {})) {
+    const r = series.episodeRatings[key]
+    if (r?.blue == null && r?.purple == null) continue
+    const match = /^S\d+E(\d+)$/.exec(key)
+    if (match) numbers.add(Number(match[1]))
+  }
+  return [...numbers].sort((a, b) => a - b)
+}
+
+// The series-level total for one heart stops being manually editable once
+// EVERY episode already has that heart rated — at that point the aggregate
+// in aggregateHeartRating() is the only correct value and nothing will ever
+// trigger a recompute again (there are no more episodes left to rate), so a
+// manual edit would silently "stick" as a permanent override instead of the
+// auto-computed value winning as intended. Before full completion, manual
+// editing stays available (e.g. for a series added after the fact, watched
+// before per-episode rating existed, with zero episode ratings at all).
+export function heartFullyRated(series, heart) {
+  const total = totalEpisodes(series)
+  if (total === 0) return false
+  const ratedCount = Object.values(series.episodeRatings ?? {}).filter((r) => r?.[heart] != null).length
+  return ratedCount >= total
+}

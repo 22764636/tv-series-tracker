@@ -348,11 +348,22 @@ dal codice reale è peggio che non averla.
     (`aggregateHeartRating` in `progress.js`), ricalcolata e riscritta ad
     ogni voto-episodio — **il calcolo automatico vince sempre** (scelta
     esplicita dell'utente): se esiste anche un solo voto per episodio per
-    quel cuore, il totale è sempre quel calcolo, non un valore digitato a
-    mano. La modifica manuale del totale (`setRating`, stesso
-    `HeartRating`) resta utile **solo finché non esiste ancora nessun voto
-    per episodio** per quel cuore — non è un "override" persistente: al
-    primo voto-episodio di quel cuore, il calcolo lo sovrascrive.
+    quel cuore, `VaultContext.setEpisodeRating` sovrascrive il totale con
+    quel calcolo ad ogni cambio. La modifica manuale del totale
+    (`setRating`, stesso `HeartRating`) resta **permessa nell'interfaccia**
+    finché non tutti gli episodi hanno un voto per quel cuore
+    (`heartFullyRated` in `progress.js`) — non "finché non ne esiste
+    nessuno": un utente che aggiunge una serie già vista (niente voti per
+    episodio possibili, es. vista settimane fa) deve poter impostare un
+    voto totale a mano e vederlo restare, e lo stesso vale mentre i voti
+    per episodio sono solo parziali. Il bottone "Modifica"/"+ Aggiungi"
+    del totale **sparisce del tutto** (non solo disabilitato) solo quando
+    **ogni** episodio ha già un voto per quel cuore — a quel punto nessun
+    futuro voto-episodio scatterà mai più un ricalcolo (non restano
+    episodi da votare), quindi un valore digitato a mano lì rimarrebbe per
+    sempre come override permanente invece di perdere sempre contro il
+    calcolo, il vero motivo per bloccare la modifica solo in quel caso
+    preciso e non prima.
   - Il "voto finale" mostrato (card e pagina serie) resta la **media dei
     due totali** (`averageRating` in `progress.js`, invariato): se uno dei
     due non ha ancora un totale, la media mostrata è semplicemente quello
@@ -374,13 +385,23 @@ dal codice reale è peggio che non averla.
   - **Grafico voti per episodio** (`src/components/RatingChart.jsx`, sotto
     il voto totale in `SeriesDetail.jsx`, solo se almeno un episodio ha un
     voto): grafico a linee responsive, senza libreria esterna (SVG
-    disegnato a mano con `viewBox`, `width: 100%` + `min-width` in px così
-    si allarga a riempire la card quando c'è spazio ma scorre
-    orizzontalmente invece di comprimersi quando gli episodi votati non ci
-    stanno), un punto per episodio votato (S1E1, S1E2, ...) con tre linee —
-    💙, 💜 e una linea tratteggiata "Media" in grigio (`--color-muted`)
-    perché è un valore derivato, non un terzo voto. Sopra al grafico, una
-    riga sempre visibile (non solo in hover) mostra i totali correnti —
+    disegnato a mano con `viewBox`). **Dimensione fissa in pixel** pari al
+    viewBox (`style={{ width, height: HEIGHT }}`, mai `width: 100%` +
+    `min-width`): bug reale corretto — con una percentuale, l'intero
+    sistema di coordinate (font-size delle etichette, spessore linee,
+    raggio dei pallini, tutti espressi in unità SVG "fisse") veniva
+    riscalato per riempire il contenitore, quindi una serie con pochi
+    episodi votati (grafico naturalmente stretto) su una card desktop
+    larga produceva etichette e pallini enormi e sfocati — "standard"
+    voleva dire proprio evitare questo, non renderlo sempre a larghezza
+    piena. Con dimensione fissa, 1 unità SVG = 1px sempre: un grafico con
+    pochi punti resta più stretto (spazio vuoto a destra nella card,
+    normale) invece di essere gonfiato; scorre orizzontalmente
+    (`overflow-x-auto`) solo quando serve più spazio di quanto il
+    contenitore offre. Un punto per episodio votato con tre linee — 💙,
+    💜 e una linea tratteggiata "Media" in grigio (`--color-muted`) perché
+    è un valore derivato, non un terzo voto. Sopra al grafico, una riga
+    sempre visibile (non solo in hover) mostra i totali correnti —
     "💙 X/10", "💜 X/10", "Media X/10" — passati come props
     (`totalBlue`/`totalPurple`/`totalAverage`) calcolati dal chiamante con
     gli helper di `progress.js`, mai ricalcolati dentro il componente.
@@ -397,8 +418,44 @@ dal codice reale è peggio che non averla.
     esplicitamente `pointerType === 'touch'` (solo un vero mouse che esce
     dall'area deve nascondere il tooltip) — senza questo controllo il
     tooltip touch lampeggia e sparisce invece di restare visibile fino al
-    tocco successivo. `touch-action: pan-y` sull'SVG lascia lo scroll
-    verticale della pagina intatto durante l'interazione. **Colori**:
+    tocco successivo. **Nessuna restrizione `touch-action` sull'SVG** (una
+    versione precedente impostava `touch-action: pan-y` per lasciare
+    intatto lo scroll verticale della pagina durante l'interazione) — bug
+    reale corretto: `pan-y` dice al browser di trattare uno swipe
+    orizzontale come "gestito da script", il che impediva anche allo
+    scroll orizzontale nativo del contenitore `overflow-x-auto` di
+    funzionare, bloccando di fatto la visione di episodi oltre quelli
+    visibili nella larghezza iniziale su schermi stretti. Nessuno di
+    questi handler chiama mai `preventDefault`, quindi il valore
+    predefinito (`auto`, gestione nativa su entrambi gli assi) già lascia
+    scorrere correttamente sia il grafico in orizzontale sia la pagina in
+    verticale, mentre il crosshair continua ad aggiornarsi in
+    contemporanea via `touchmove`. **Zoom** (bottoni "−"/"+", `zoom` da
+    0.6× a 2× in passi di 0.2, moltiplica `MIN_POINT_SPACING`): utile
+    tanto su mobile (episodi ravvicinati, difficili da toccare
+    singolarmente) quanto su desktop (serie con molti episodi, vedere più
+    punti insieme riducendo lo zoom) — per questo non è limitato a un solo
+    breakpoint. I bottoni stanno in una riga propria sotto la legenda
+    (`flex-col` mobile, `sm:flex-row` desktop) invece che dentro la
+    stessa riga `flex-wrap` della legenda: messi lì in un primo tentativo,
+    competevano per lo stesso spazio della legenda su schermi stretti e
+    finivano per farla tornare a capo su due righe — lo stesso identico
+    bug che si stava correggendo, solo spostato. **Filtri** (solo se la
+    serie ha più di una stagione, gestiti in `RatingChartSection` dentro
+    `SeriesDetail.jsx`, non dentro `RatingChart.jsx` che resta un
+    componente "dumb" che disegna solo i dati ricevuti): "Tutti gli
+    episodi" (default, cronologico su tutte le stagioni), "Per stagione"
+    (`seasonRatingChartData` in `progress.js`), "Confronta stesso episodio
+    tra stagioni" (`episodeAcrossSeasonsChartData`, es. ogni "episodio 2"
+    di ogni stagione messo a confronto, punti sull'asse X etichettati per
+    stagione — S1, S2, ... — invece che per episodio; stagioni troppo
+    corte per raggiungere quel numero di episodio, o senza voto per
+    quell'episodio, semplicemente escluse, stessa regola "escludi non
+    stimare" di `remainingMinutes`). Il picker delle stagioni/episodi
+    disponibili cambia lo zoom/hover: `RatingChart` riceve una `key`
+    (modalità+stagione+episodio) che lo rimonta ad ogni cambio di vista,
+    così lo zoom non resta "appiccicato" da una vista completamente
+    diversa. **Colori**:
     `--chart-blue`/`--chart-purple` in
     `index.css`, deliberatamente separati dalla palette semantica dell'app
     (vedi tabella sotto) perché qui il colore deve portare *identità*
@@ -455,6 +512,17 @@ dal codice reale è peggio che non averla.
   invece di mostrare una libreria vuota o rompere l'ordinamento — i valori
   ammessi sono verificati contro le chiavi note (`STATUS_KEYS`/
   `SORT_KEYS` in `Home.jsx`) prima dell'uso.
+- **"Da vedere oggi" (`Home.jsx`)**: sezione in cima alla Libreria, sopra i
+  filtri di stato, che riusa `upcomingCalendarEntries` (`schedule.js` — la
+  stessa proiezione su cui è costruito il Calendario) filtrata alla sola
+  data di oggi, mostrando ogni serie con un episodio non ancora visto
+  previsto oggi tramite lo stesso `SeriesCard` della griglia principale
+  (azione rapida "Segna SxEy" già inclusa, nessun componente nuovo).
+  **Sempre visibile indipendentemente dal filtro di stato/ordinamento**
+  scelto sotto: non è una vista filtrata della libreria, è un richiamo
+  fisso "cosa guardare oggi" — nascosta del tutto quando non c'è nessuna
+  serie in programma oggi, stesso principio "nascondi se vuoto" usato
+  altrove (tempo rimanente, sezione voto).
 - **Layout `SeriesDetail.jsx`**: titolo, pillole di stato, barra di
   progresso (+ episodi visti/tempo rimanente), link, Wikipedia restano
   nella colonna stretta accanto al poster (l'header "di identità" della
@@ -502,6 +570,24 @@ dal codice reale è peggio che non averla.
     riusa `Modal`) — mai `window.confirm()` nativo, che non segue lo stile
     dell'app ed è più rischioso da confermare per errore con un bottone
     icona piccolo.
+  - **"Segna non vista" di un'intera stagione** (`SeasonBlock`) chiede
+    conferma tramite modale (stesso pattern di `ConfirmDeleteModal`,
+    riusa `Modal`) prima di eseguire — a differenza di "Segna tutta
+    vista" (che aggiunge solo dati, nessuna conferma necessaria), smarcare
+    un'intera stagione **cancella le date di visione registrate** per
+    ogni episodio; se poi vengono ri-segnati visti, la data sarà quella
+    del giorno corrente, non quella originale — una perdita di cronologia
+    reale, non solo uno stato che si può ripristinare con un click,
+    quindi merita lo stesso livello di attenzione della cancellazione
+    serie.
+  - **Giorni di visione, sezione intera nascosta** quando lo stato è
+    "Completata", "In attesa di nuova stagione" o "Abbandonata"
+    (`showWatchDays` in `SeriesDetail.jsx`): in questi tre stati non c'è
+    più nulla da pianificare (niente episodi futuri da guardare, o non
+    ancora usciti), quindi la sezione toglierebbe solo spazio a
+    episodi/valutazione senza aggiungere nulla — non distruttivo,
+    `series.watchDays` resta salvato e riappare modificabile se lo stato
+    torna "In corso"/"Da vedere".
   - **Giorni di visione (`WatchDaysRow`)**: `grid grid-cols-7`, **stessa
     griglia a tutte le larghezze** (mobile e desktop), non solo sotto
     `sm` — una versione precedente usava `grid-cols-7` solo su mobile e
