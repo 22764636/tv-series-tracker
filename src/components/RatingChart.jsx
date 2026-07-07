@@ -22,6 +22,15 @@ const ZOOM_STEP = 0.2
 export default function RatingChart({ data, totalBlue, totalPurple, totalAverage, className = '' }) {
   const [hoverIndex, setHoverIndex] = useState(null)
   const [zoom, setZoom] = useState(1)
+  // Click a legend item to hide/show that line — useful to isolate one
+  // person's ratings without the other's line crossing over it. Hiding a
+  // line also hides its value from the hover tooltip (below), not just the
+  // line/dots themselves, so the "table view" the tooltip provides stays
+  // consistent with what's actually visible on the chart.
+  const [hidden, setHidden] = useState({ blue: false, purple: false, avg: false })
+  function toggleHidden(key) {
+    setHidden((h) => ({ ...h, [key]: !h[key] }))
+  }
   const svgRef = useRef(null)
   const containerRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -197,19 +206,34 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap items-center gap-3 text-xs sm:gap-4 sm:text-sm">
-        <span className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => toggleHidden('blue')}
+          aria-pressed={!hidden.blue}
+          className={`flex items-center gap-1.5 ${hidden.blue ? 'opacity-40' : ''}`}
+        >
           <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
           <span className="text-text">
             💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
           </span>
-        </span>
-        <span className="flex items-center gap-1.5">
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleHidden('purple')}
+          aria-pressed={!hidden.purple}
+          className={`flex items-center gap-1.5 ${hidden.purple ? 'opacity-40' : ''}`}
+        >
           <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
           <span className="text-text">
             💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
           </span>
-        </span>
-        <span className="flex items-center gap-1.5">
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleHidden('avg')}
+          aria-pressed={!hidden.avg}
+          className={`flex items-center gap-1.5 ${hidden.avg ? 'opacity-40' : ''}`}
+        >
           <span
             className="inline-block h-0.5 w-4 rounded-full"
             style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
@@ -217,7 +241,7 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
           <span className="text-muted">
             Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
           </span>
-        </span>
+        </button>
       </div>
 
       {/* width fills containerWidth when there's room (reactive — a short
@@ -284,23 +308,29 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
             />
           )}
 
-          <path
-            d={linePath('avg')}
-            fill="none"
-            stroke="var(--color-muted)"
-            strokeWidth="2"
-            strokeDasharray="4 3"
-            strokeLinecap="round"
-          />
-          <path d={linePath('blue')} fill="none" stroke="var(--chart-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={linePath('purple')} fill="none" stroke="var(--chart-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          {!hidden.avg && (
+            <path
+              d={linePath('avg')}
+              fill="none"
+              stroke="var(--color-muted)"
+              strokeWidth="2"
+              strokeDasharray="4 3"
+              strokeLinecap="round"
+            />
+          )}
+          {!hidden.blue && (
+            <path d={linePath('blue')} fill="none" stroke="var(--chart-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+          {!hidden.purple && (
+            <path d={linePath('purple')} fill="none" stroke="var(--chart-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          )}
 
           {data.map((d, i) => (
             <g key={d.key}>
-              {d.blue != null && (
+              {d.blue != null && !hidden.blue && (
                 <circle cx={xFor(i)} cy={yFor(d.blue)} r="4" fill="var(--chart-blue)" stroke="var(--color-surface)" strokeWidth="2" />
               )}
-              {d.purple != null && (
+              {d.purple != null && !hidden.purple && (
                 <circle cx={xFor(i)} cy={yFor(d.purple)} r="4" fill="var(--chart-purple)" stroke="var(--color-surface)" strokeWidth="2" />
               )}
             </g>
@@ -325,19 +355,21 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
       {hovered && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs">
           <span className="font-medium text-text">{hovered.key}</span>
-          {hovered.blue != null && (
+          {hovered.blue != null && !hidden.blue && (
             <span className="text-muted">
               💙 <strong className="text-text">{formatRating(hovered.blue)}</strong>
             </span>
           )}
-          {hovered.purple != null && (
+          {hovered.purple != null && !hidden.purple && (
             <span className="text-muted">
               💜 <strong className="text-text">{formatRating(hovered.purple)}</strong>
             </span>
           )}
-          <span className="text-muted">
-            Media <strong className="text-text">{formatRating(hovered.avg)}</strong>
-          </span>
+          {!hidden.avg && (
+            <span className="text-muted">
+              Media <strong className="text-text">{formatRating(hovered.avg)}</strong>
+            </span>
+          )}
         </div>
       )}
     </div>

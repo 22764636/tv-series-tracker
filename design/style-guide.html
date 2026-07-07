@@ -367,8 +367,12 @@
   <strong>current totals</strong> — "💙 X/10", "💜 X/10", "Media X/10" — always visible, not just on hover; the caller
   passes those numbers in as props (<code class="class">totalBlue</code>/<code class="class">totalPurple</code>/
   <code class="class">totalAverage</code>, computed with progress.js helpers) rather than the chart re-deriving them.
-  Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode — every value it
-  shows is also plainly visible in the per-episode rows above (that's this chart's "table view"). <strong>Sizing:</strong>
+  <strong>Each legend item is a button</strong> that toggles that line's visibility — hidden lines drop to
+  <code class="class">opacity-40</code> in the legend and disappear from both the chart (line + dots) and the hover
+  tooltip, so isolating one person's ratings doesn't leave a stray number in the tooltip for a line that's no longer
+  drawn. Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode — every
+  value it shows is also plainly visible in the per-episode rows above (that's this chart's "table view").
+  <strong>Sizing:</strong>
   reactive width, fixed units — the wrapping <code class="class">overflow-x-auto</code> div is measured with a
   <code class="class">ResizeObserver</code>, and that measurement is a <em>floor</em> for the SVG's width
   (<code class="class">Math.max(280, containerWidth, neededWidth)</code>), so the chart fills the card instead of

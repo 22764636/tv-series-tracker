@@ -414,6 +414,12 @@ dal codice reale è peggio che non averla.
     "💙 X/10", "💜 X/10", "Media X/10" — passati come props
     (`totalBlue`/`totalPurple`/`totalAverage`) calcolati dal chiamante con
     gli helper di `progress.js`, mai ricalcolati dentro il componente.
+    **Ogni voce della legenda è cliccabile** per nascondere/mostrare quella
+    linea (utile per isolare il voto di una sola persona senza che l'altra
+    linea ci passi sopra) — `opacity-40` sulla legenda quando nascosta,
+    linea e pallini rimossi dal grafico, e il valore corrispondente
+    escluso anche dal tooltip hover (non solo dal grafico), così la "vista
+    tabellare" del tooltip resta coerente con cosa è davvero visibile.
     Crosshair + tooltip al passaggio del mouse/tocco (valori sempre
     visibili anche senza hover nelle righe per-episodio sopra, che fanno da
     "vista tabellare"). **Supporto touch**: oltre a `onPointerDown`/
