@@ -233,7 +233,10 @@
   that single value stands in as the provisional average. <code class="class">formatRating()</code> rounds to 2 decimals
   and strips trailing zeros (8 instead of 8.00). On the card, shown as "Voto X/10" using the same average — the
   status-badge row uses <code class="class">flex items-center justify-between</code> so the rating sits flush right
-  opposite the badge, instead of just trailing it.
+  opposite the badge, instead of just trailing it. The "Modifica"/"+ Aggiungi" control on these two total rows
+  disappears entirely (<code class="class">HeartRating</code>'s <code class="class">locked</code> prop, only ever
+  passed here — never for the per-episode rows in SeasonBlock) once every episode already has that heart rated:
+  see <code class="class">heartFullyRated()</code> in progress.js for why it's "every episode", not "any episode".
 </p>
 
 <h2>Icon family (Search / Refresh / Close / Share)</h2>
@@ -303,7 +306,10 @@
   border-border px-4 py-2 text-sm font-medium text-text hover:bg-surface-hover</code>) then "Elimina"
   (<code class="class">rounded-full bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90</code>, the
   one place a solid danger-filled button is used, deliberately not <code class="class">danger-soft</code>, since this
-  is the single confirm step for an irreversible action).
+  is the single confirm step for an irreversible action). The same exact pattern (body copy + same two footer
+  buttons) is reused unchanged in <code class="class">SeasonBlock</code> for confirming "Segna non vista" on a whole
+  season — same visual weight because it's an equally real loss of data (watched dates), not a lighter "are you sure"
+  aimed only at series deletion.
 </p>
 
 <h2>Search (desktop header + mobile FAB)</h2>
@@ -363,12 +369,14 @@
   <code class="class">totalAverage</code>, computed with progress.js helpers) rather than the chart re-deriving them.
   Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode — every value it
   shows is also plainly visible in the per-episode rows above (that's this chart's "table view"). Sizing: SVG
-  <code class="class">viewBox</code> defines the logical coordinate space, but the element itself is
-  <code class="class">width: 100%; min-width: &lt;natural px&gt;; height: auto</code> — it stretches to fill the card
-  when there's room (few rated episodes on a wide screen) and only falls back to horizontal scroll
+  <code class="class">viewBox</code> defines the logical coordinate space, and the element is pinned to that exact
+  pixel size (<code class="class">style={{ width, height: HEIGHT }}</code>, never <code class="class">width: 100%</code>)
+  — 1 SVG unit always equals 1px. A percentage width was tried first and was a real bug: it stretches the whole
+  coordinate system to fill the card, so a short chart (few rated episodes) on a wide desktop card rendered
+  comically oversized labels/dots/lines — "standard style regardless of rated count" means extra container width is
+  just left empty next to a narrower chart, not used to inflate it. Falls back to horizontal scroll
   (<code class="class">overflow-x-auto</code> wrapper, plain scrollbar, not <code class="class">.no-scrollbar</code>)
-  once episodes genuinely no longer fit at a comfortable point spacing. Don't pin it to a fixed pixel width — that's
-  what made it look small on wide screens before.
+  once episodes (or a high zoom level, see below) no longer fit the container.
 </p>
 <p class="lede">
   <strong>Touch</strong> — <code class="class">onTouchStart</code>/<code class="class">onTouchMove</code> alongside the
@@ -376,8 +384,32 @@
   relying on <code class="class">onPointerDown</code>/<code class="class">onPointerMove</code> alone misses real touch
   taps in practice. <code class="class">onPointerLeave</code> ignores <code class="class">pointerType === 'touch'</code>
   — lifting a finger fires a pointerleave too, which would otherwise instantly clear the tooltip a tap just set;
-  only an actual mouse leaving the chart area should dismiss it. <code class="class">touch-action: pan-y</code> on the
-  SVG keeps vertical page scrolling working through the chart.
+  only an actual mouse leaving the chart area should dismiss it. No <code class="class">touch-action</code>
+  restriction on the SVG (a previous version set <code class="class">pan-y</code> specifically to keep vertical page
+  scroll working through the chart) — real bug: <code class="class">pan-y</code> also told the browser to treat
+  horizontal swipes as script-only, which silently broke the ancestor <code class="class">overflow-x-auto</code>'s
+  native horizontal scroll, leaving longer seasons stuck showing only what fit in the initial viewport. None of these
+  handlers call <code class="class">preventDefault</code>, so the default (<code class="class">auto</code>, native on
+  both axes) already scrolls each direction correctly on its own nearest scrollable ancestor.
+</p>
+<p class="lede">
+  <strong>Zoom</strong> — two small round <code class="class">h-6 w-6 rounded-full border border-border</code>
+  "−"/"+" buttons (plain ASCII, not an SVG icon — unambiguous and renders identically everywhere, unlike ↻ before it
+  was replaced), 0.6×–2× in 0.2 steps, multiplying the point spacing. On its own row below the legend
+  (<code class="class">flex-col</code> on mobile, merges into the legend's row via <code class="class">sm:flex-row
+  sm:ml-auto</code> on desktop) — an earlier attempt put it inline in the legend's own <code class="class">flex-wrap</code>
+  row, where it became a 4th competing item and reintroduced the exact "wraps to two rows on mobile" bug the legend
+  spacing/font-size had just been tuned to fix.
+</p>
+<p class="lede">
+  <strong>Filter modes</strong> (only shown for multi-season series, in a <code class="class">RatingChartSection</code>
+  wrapper in SeriesDetail.jsx — RatingChart itself stays a "dumb" renderer of whatever <code class="class">data</code>
+  it's given): a <code class="class">&lt;select&gt;</code> for "Tutti gli episodi" (default, chronological) / "Per
+  stagione" (adds a season <code class="class">&lt;select&gt;</code>) / "Confronta stesso episodio tra stagioni"
+  (adds an episode-number <code class="class">&lt;select&gt;</code>, x-axis becomes season labels — S1, S2, ... —
+  instead of episode labels). RatingChart gets a <code class="class">key</code> built from the current mode/season/
+  episode selection, remounting it (and resetting zoom/hover) on every filter change instead of carrying state over
+  from a completely different view.
 </p>
 <p class="lede">
   <strong>Chart color tokens</strong> — <code class="class">--chart-blue</code>/<code class="class">--chart-purple</code>
@@ -397,6 +429,16 @@
     <span style="display:inline-block; width:16px; height:2px; background:repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px)"></span>Media
   </span>
 </div>
+
+<h2>"Da vedere oggi" (Home)</h2>
+<p class="lede">
+  Sits above the status tabs/sort row, own <code class="class">h2</code> ("Da vedere oggi",
+  <code class="class">text-sm font-semibold text-text</code>) over the same card grid classes as the main library
+  grid, reusing <code class="class">SeriesCard</code> as-is (no separate component) — series come from
+  <code class="class">upcomingCalendarEntries</code> (schedule.js) filtered to today's date. Hidden entirely when
+  empty, and unaffected by the status filter/sort chosen below it: it's a fixed "what's due today" callout, not a
+  filtered slice of the library.
+</p>
 
 <h2>Sort control (Home)</h2>
 <p class="lede">
