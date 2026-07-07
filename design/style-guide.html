@@ -368,38 +368,47 @@
   passes those numbers in as props (<code class="class">totalBlue</code>/<code class="class">totalPurple</code>/
   <code class="class">totalAverage</code>, computed with progress.js helpers) rather than the chart re-deriving them.
   Crosshair + one shared tooltip on pointer move/hover, listing every series' value at that episode — every value it
-  shows is also plainly visible in the per-episode rows above (that's this chart's "table view"). Sizing: SVG
-  <code class="class">viewBox</code> defines the logical coordinate space, and the element is pinned to that exact
-  pixel size (<code class="class">style={{ width, height: HEIGHT }}</code>, never <code class="class">width: 100%</code>)
-  — 1 SVG unit always equals 1px. A percentage width was tried first and was a real bug: it stretches the whole
-  coordinate system to fill the card, so a short chart (few rated episodes) on a wide desktop card rendered
-  comically oversized labels/dots/lines — "standard style regardless of rated count" means extra container width is
-  just left empty next to a narrower chart, not used to inflate it. Falls back to horizontal scroll
-  (<code class="class">overflow-x-auto</code> wrapper, plain scrollbar, not <code class="class">.no-scrollbar</code>)
-  once episodes (or a high zoom level, see below) no longer fit the container.
+  shows is also plainly visible in the per-episode rows above (that's this chart's "table view"). <strong>Sizing:</strong>
+  reactive width, fixed units — the wrapping <code class="class">overflow-x-auto</code> div is measured with a
+  <code class="class">ResizeObserver</code>, and that measurement is a <em>floor</em> for the SVG's width
+  (<code class="class">Math.max(280, containerWidth, neededWidth)</code>), so the chart fills the card instead of
+  sitting at a bare-minimum content width in a corner of it — but the SVG element is always pinned to that exact
+  pixel size (<code class="class">style={{ width, height: HEIGHT }}</code>, never <code class="class">width: 100%</code>),
+  so 1 SVG unit always equals 1px regardless of container size or point count. Two different bugs led here: a
+  percentage width first (stretches the whole coordinate system, so a short chart on a wide card rendered comically
+  oversized labels/dots/lines), then a fixed-to-content-only width (fixed the oversizing, but now a short chart just
+  sat small and clipped-looking even with obvious extra room in the card) — reactive-container-as-floor plus
+  always-fixed-units is what satisfies both at once. Falls back to horizontal scroll (plain scrollbar, not
+  <code class="class">.no-scrollbar</code>) once points (or zoom) genuinely need more room than the container offers.
 </p>
 <p class="lede">
-  <strong>Touch</strong> — <code class="class">onTouchStart</code>/<code class="class">onTouchMove</code> alongside the
-  pointer handlers, reading <code class="class">e.touches</code>/<code class="class">e.changedTouches</code> directly;
-  relying on <code class="class">onPointerDown</code>/<code class="class">onPointerMove</code> alone misses real touch
-  taps in practice. <code class="class">onPointerLeave</code> ignores <code class="class">pointerType === 'touch'</code>
-  — lifting a finger fires a pointerleave too, which would otherwise instantly clear the tooltip a tap just set;
-  only an actual mouse leaving the chart area should dismiss it. No <code class="class">touch-action</code>
-  restriction on the SVG (a previous version set <code class="class">pan-y</code> specifically to keep vertical page
-  scroll working through the chart) — real bug: <code class="class">pan-y</code> also told the browser to treat
-  horizontal swipes as script-only, which silently broke the ancestor <code class="class">overflow-x-auto</code>'s
-  native horizontal scroll, leaving longer seasons stuck showing only what fit in the initial viewport. None of these
-  handlers call <code class="class">preventDefault</code>, so the default (<code class="class">auto</code>, native on
-  both axes) already scrolls each direction correctly on its own nearest scrollable ancestor.
+  <strong>Touch</strong> — crosshair works via <code class="class">onPointerDown</code>/<code class="class">onPointerMove</code>
+  (mouse/pen) plus a native (not JSX) <code class="class">touchmove</code> listener reading
+  <code class="class">e.touches</code> directly. <code class="class">onPointerLeave</code> ignores
+  <code class="class">pointerType === 'touch'</code> — lifting a finger fires a pointerleave too, which would
+  otherwise instantly clear the tooltip a tap just set; only an actual mouse leaving the chart area should dismiss it.
+  No <code class="class">touch-action</code> restriction on the SVG (a previous version set
+  <code class="class">pan-y</code> specifically to keep vertical page scroll working through the chart) — real bug:
+  <code class="class">pan-y</code> also told the browser to treat horizontal swipes as script-only, which silently
+  broke the ancestor <code class="class">overflow-x-auto</code>'s native horizontal scroll, leaving longer seasons
+  stuck showing only what fit in the initial viewport. Single-finger handling never calls
+  <code class="class">preventDefault</code>, so the default (<code class="class">auto</code>, native on both axes)
+  already scrolls each direction correctly on its own nearest scrollable ancestor.
 </p>
 <p class="lede">
-  <strong>Zoom</strong> — two small round <code class="class">h-6 w-6 rounded-full border border-border</code>
-  "−"/"+" buttons (plain ASCII, not an SVG icon — unambiguous and renders identically everywhere, unlike ↻ before it
-  was replaced), 0.6×–2× in 0.2 steps, multiplying the point spacing. On its own row below the legend
-  (<code class="class">flex-col</code> on mobile, merges into the legend's row via <code class="class">sm:flex-row
-  sm:ml-auto</code> on desktop) — an earlier attempt put it inline in the legend's own <code class="class">flex-wrap</code>
-  row, where it became a 4th competing item and reintroduced the exact "wraps to two rows on mobile" bug the legend
-  spacing/font-size had just been tuned to fix.
+  <strong>Zoom</strong> — two-finger pinch on mobile, mouse wheel on desktop; no on-screen buttons (removed on
+  request — they used to sit in their own row below the legend, but before that even reached this codebase they'd
+  briefly lived inline in the legend's own row, where a 4th competing item reintroduced the exact "wraps to two rows
+  on mobile" bug the legend had just been tuned to fix). 0.6×–2× in 0.2 steps, multiplying the point spacing.
+  <strong>Attached as native listeners with <code class="class">{ passive: false }</code> inside a
+  <code class="class">useEffect</code></strong> — not the JSX <code class="class">onWheel</code>/<code class="class">onTouchStart</code>/
+  <code class="class">onTouchMove</code>/<code class="class">onTouchEnd</code> props. Real bug found while building
+  this: React registers wheel/touch listeners as passive by default, so <code class="class">e.preventDefault()</code>
+  called from a JSX handler is silently ignored (console: "Unable to preventDefault inside passive event listener
+  invocation", not a thrown error) — the browser's own scroll ran anyway, panning the chart horizontally out from
+  under the still-stationary pointer, so the very next wheel tick landed over empty space and did nothing; zoom could
+  go in but never back out. An explicit non-passive listener is the only way to actually block the browser's default
+  here (same reasoning applies to blocking native page-zoom during a two-finger pinch).
 </p>
 <p class="lede">
   <strong>Filter modes</strong> (only shown for multi-season series, in a <code class="class">RatingChartSection</code>

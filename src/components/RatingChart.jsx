@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatRating } from '../lib/progress'
 
 const HEIGHT = 260
@@ -23,14 +23,39 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
   const [hoverIndex, setHoverIndex] = useState(null)
   const [zoom, setZoom] = useState(1)
   const svgRef = useRef(null)
+  const containerRef = useRef(null)
+  const [containerWidth, setContainerWidth] = useState(0)
 
-  const width = Math.max(280, PAD_LEFT + PAD_RIGHT + (data.length - 1) * MIN_POINT_SPACING * zoom)
+  // Measured so the chart can actually fill the card (reactive to whatever
+  // space it's given) instead of always sitting at its bare minimum content
+  // width, which — even after the "don't stretch a fixed viewBox" fix below
+  // — left a short chart looking clipped/cramped in a corner of a much wider
+  // card. containerWidth only matters as a floor: once there are enough
+  // points (or enough zoom) that they need more room than the container
+  // has, width grows past it and overflow-x-auto takes over with a scroll
+  // instead of cramming everything in.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const measure = () => setContainerWidth(el.clientWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const neededWidth = PAD_LEFT + PAD_RIGHT + (data.length - 1) * MIN_POINT_SPACING * zoom
+  const width = Math.max(280, containerWidth, neededWidth)
   const plotWidth = width - PAD_LEFT - PAD_RIGHT
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
 
-  function xFor(i) {
-    return data.length <= 1 ? PAD_LEFT + plotWidth / 2 : PAD_LEFT + (i / (data.length - 1)) * plotWidth
-  }
+  // useCallback'd (not a plain function) so updateHoverFromClientX below —
+  // and, transitively, the wheel/touch effect further down — can list it as
+  // a dependency without also re-running on every unrelated render.
+  const xFor = useCallback(
+    (i) => (data.length <= 1 ? PAD_LEFT + plotWidth / 2 : PAD_LEFT + (i / (data.length - 1)) * plotWidth),
+    [data.length, plotWidth],
+  )
   function yFor(value) {
     return PAD_TOP + (1 - (value - 1) / 9) * plotHeight
   }
@@ -43,48 +68,116 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
     return points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ')
   }
 
-  function updateHoverFromClientX(clientX) {
-    const svg = svgRef.current
-    if (!svg) return
-    const rect = svg.getBoundingClientRect()
-    const relX = ((clientX - rect.left) / rect.width) * width
-    let nearest = 0
-    let best = Infinity
-    data.forEach((_, i) => {
-      const dist = Math.abs(xFor(i) - relX)
-      if (dist < best) {
-        best = dist
-        nearest = i
-      }
-    })
-    setHoverIndex(nearest)
-  }
+  const updateHoverFromClientX = useCallback(
+    (clientX) => {
+      const svg = svgRef.current
+      if (!svg) return
+      const rect = svg.getBoundingClientRect()
+      const relX = ((clientX - rect.left) / rect.width) * width
+      let nearest = 0
+      let best = Infinity
+      data.forEach((_, i) => {
+        const dist = Math.abs(xFor(i) - relX)
+        if (dist < best) {
+          best = dist
+          nearest = i
+        }
+      })
+      setHoverIndex(nearest)
+    },
+    [data, width, xFor],
+  )
 
   function handlePointerMove(e) {
     updateHoverFromClientX(e.clientX)
   }
 
-  // Belt-and-braces alongside the pointer handlers above: touch-originated
-  // pointer events aren't consistently delegated the same way mouse ones are
-  // (confirmed with Playwright's touch emulation — the native DOM event
-  // fires, but relying on pointerdown/pointermove alone missed it), so touch
-  // gets its own explicit handler reading straight from the Touch API.
-  // Deliberately no touch-action restriction on the <svg> (bug fixed here):
-  // an earlier version set touch-action: pan-y specifically so a vertical
-  // page-scroll gesture wouldn't get eaten while touching the chart — but
-  // that also told the browser to treat horizontal swipes as script-only,
-  // which blocked the ancestor overflow-x-auto div's native horizontal
-  // scroll entirely (a real report: stuck unable to see episodes beyond
-  // what fit in the initial viewport on a longer season). None of these
-  // handlers ever call preventDefault, so the default touch-action (both
-  // axes handled natively) already lets the browser scroll each direction
-  // correctly on its own nearest scrollable ancestor — horizontal here,
-  // vertical on the page — while touchmove below still updates the
-  // crosshair concurrently.
-  function handleTouch(e) {
-    const touch = e.touches[0] ?? e.changedTouches[0]
-    if (touch) updateHoverFromClientX(touch.clientX)
+  function clampZoom(z) {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100))
   }
+
+  function touchDistance(touches) {
+    const [a, b] = touches
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+  }
+
+  // { distance, zoom } captured at the start of a two-finger touch, so scale
+  // is computed relative to that starting point rather than drifting
+  // cumulatively from one touchmove event to the next.
+  const pinchRef = useRef(null)
+
+  // Wheel (desktop) and touch (mobile) zoom/crosshair are all attached as
+  // native listeners with { passive: false } — NOT the JSX onWheel/onTouch*
+  // props. React registers those as passive by default, so calling
+  // preventDefault() inside them is silently ignored (logs "Unable to
+  // preventDefault inside passive event listener invocation" instead of
+  // throwing) rather than actually blocking the browser's default action.
+  // That silent failure caused a real bug here: a wheel-zoom's preventDefault
+  // did nothing, so the browser ALSO natively scrolled the chart horizontally
+  // under the still-stationary pointer — meaning every subsequent wheel tick
+  // landed over empty space instead of the SVG and did nothing at all. Same
+  // risk for pinch (the browser's native page-zoom would otherwise kick in
+  // alongside our own). Effect re-runs on zoom/width/data changes so the
+  // closures below always see current values — `pinchRef` (a ref, not
+  // state) is what actually needs to survive across those re-attachments,
+  // to keep tracking the same in-progress gesture.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+
+    function onWheel(e) {
+      e.preventDefault()
+      setZoom((z) => clampZoom(z + (e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP)))
+    }
+
+    // Deliberately no touch-action restriction on the <svg> (bug fixed
+    // separately): an earlier version set touch-action: pan-y specifically
+    // so a vertical page-scroll gesture wouldn't get eaten while touching
+    // the chart — but that also told the browser to treat horizontal
+    // swipes as script-only, which blocked the ancestor overflow-x-auto
+    // div's native horizontal scroll entirely (a real report: stuck unable
+    // to see episodes beyond what fit in the initial viewport on a longer
+    // season). Single-finger handling below never calls preventDefault, so
+    // the default touch-action (both axes handled natively) already lets
+    // the browser scroll each direction correctly on its own nearest
+    // scrollable ancestor — horizontal here, vertical on the page — while
+    // touchmove still updates the crosshair concurrently. A second finger
+    // switches to pinch-zoom instead (preventDefault only in that branch).
+    function onTouchStart(e) {
+      if (e.touches.length === 2) {
+        pinchRef.current = { distance: touchDistance(e.touches), zoom }
+      } else {
+        const touch = e.touches[0]
+        if (touch) updateHoverFromClientX(touch.clientX)
+      }
+    }
+
+    function onTouchMove(e) {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault()
+        const scale = touchDistance(e.touches) / pinchRef.current.distance
+        setZoom(clampZoom(pinchRef.current.zoom * scale))
+        return
+      }
+      const touch = e.touches[0] ?? e.changedTouches[0]
+      if (touch) updateHoverFromClientX(touch.clientX)
+    }
+
+    function onTouchEnd(e) {
+      if (e.touches.length < 2) pinchRef.current = null
+    }
+
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    svg.addEventListener('touchstart', onTouchStart, { passive: false })
+    svg.addEventListener('touchmove', onTouchMove, { passive: false })
+    svg.addEventListener('touchend', onTouchEnd, { passive: false })
+    return () => {
+      svg.removeEventListener('wheel', onWheel)
+      svg.removeEventListener('touchstart', onTouchStart)
+      svg.removeEventListener('touchmove', onTouchMove)
+      svg.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [zoom, updateHoverFromClientX])
 
   // Lifting a finger fires pointerleave too (touch has no persistent hover
   // state), which would otherwise immediately clear the tooltip we just set
@@ -101,78 +194,45 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
 
   const hovered = hoverIndex != null ? data[hoverIndex] : null
 
-  function zoomOut() {
-    setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 10) / 10))
-  }
-  function zoomIn() {
-    setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 10) / 10))
-  }
-
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      {/* Zoom controls used to sit inline in the legend row (ml-auto), but
-          that made a 4th item compete for the same wrapping row and just
-          moved the "legend wraps to two rows on mobile" bug onto itself.
-          Splitting into its own row below on mobile (flex-col), merging
-          back into one row on desktop (sm:flex-row + sm:ml-auto), keeps the
-          legend's own wrap behavior exactly as tuned and gives zoom controls
-          a deliberate, predictable position instead of an overflow artifact. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex flex-wrap items-center gap-3 text-xs sm:gap-4 sm:text-sm">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
-            <span className="text-text">
-              💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
-            </span>
+      <div className="flex flex-wrap items-center gap-3 text-xs sm:gap-4 sm:text-sm">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
+          <span className="text-text">
+            💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
-            <span className="text-text">
-              💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
-            </span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
+          <span className="text-text">
+            💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
           </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-0.5 w-4 rounded-full"
-              style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
-            />
-            <span className="text-muted">
-              Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
-            </span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-0.5 w-4 rounded-full"
+            style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
+          />
+          <span className="text-muted">
+            Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
           </span>
-        </div>
-        <div className="flex items-center gap-1 sm:ml-auto">
-          <button
-            type="button"
-            onClick={zoomOut}
-            disabled={zoom <= ZOOM_MIN}
-            aria-label="Riduci zoom"
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted hover:bg-surface-hover disabled:opacity-40"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={zoomIn}
-            disabled={zoom >= ZOOM_MAX}
-            aria-label="Aumenta zoom"
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted hover:bg-surface-hover disabled:opacity-40"
-          >
-            +
-          </button>
-        </div>
+        </span>
       </div>
 
-      {/* Fixed pixel width/height matching the viewBox exactly (1 unit = 1px),
-          not width:100% + min-width: a percentage width stretches the whole
-          coordinate system — including "fixed" font-size/stroke-width/dot
-          radius units — to fill the container, so a short chart (few rated
-          episodes) on a wide desktop card rendered comically oversized labels
-          and dots. A fixed size means "standard style" regardless of how many
-          episodes are rated: extra container width is just left empty rather
-          than used to blow up the chart. overflow-x-auto below still scrolls
-          when the chart is wider than its container (many episodes / zoomed in). */}
-      <div className="overflow-x-auto">
+      {/* width fills containerWidth when there's room (reactive — a short
+          chart no longer sits clipped in a corner of a much wider card), and
+          only grows past it once more points (or more zoom) genuinely need
+          more space, at which point overflow-x-auto scrolls instead of
+          cramming. Either way the SVG's rendered pixel size always matches
+          its viewBox exactly (no width:100% stretch), so "fixed" units —
+          label font-size, dot radius, line thickness — always render at
+          that literal pixel size regardless of point count or zoom: only
+          the spacing between points changes, never how big any one element
+          looks. Zoom is pinch (two-finger touchmove) or mouse wheel — no
+          on-screen +/- buttons, which used to compete with the legend row
+          for space on mobile and reintroduced the very wrap bug fixed here. */}
+      <div ref={containerRef} className="overflow-x-auto">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${HEIGHT}`}
@@ -181,8 +241,6 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
           onPointerDown={handlePointerMove}
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
-          onTouchStart={handleTouch}
-          onTouchMove={handleTouch}
         >
           {Y_TICKS.map((t) => (
             <g key={t}>
