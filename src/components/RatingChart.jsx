@@ -19,9 +19,18 @@ const ZOOM_STEP = 0.2
 // deliberately muted/dashed rather than a third hue: it's a derived value,
 // not a third voter. Every value the tooltip shows is also plainly visible in
 // the per-episode rows above (the "table view" for this chart).
-export default function RatingChart({ data, totalBlue, totalPurple, totalAverage, className = '' }) {
+// `viewer` ('blue' | 'purple' | null) scopes the chart to a solo-watched
+// series (see soloViewer in progress.js): the other heart's legend entry,
+// line, dots and tooltip value are hidden entirely — not shown empty — and
+// the "Media" line/legend is hidden too, since with a single rater it's
+// always identical to that one heart's line, same reasoning as dropping the
+// duplicate "Valutazione: X/10" row once this chart is visible.
+export default function RatingChart({ data, totalBlue, totalPurple, totalAverage, viewer = null, className = '' }) {
   const [hoverIndex, setHoverIndex] = useState(null)
   const [zoom, setZoom] = useState(1)
+  const showBlue = viewer !== 'purple'
+  const showPurple = viewer !== 'blue'
+  const showAvg = !viewer
   // Click a legend item to hide/show that line — useful to isolate one
   // person's ratings without the other's line crossing over it. Hiding a
   // line also hides its value from the hover tooltip (below), not just the
@@ -206,42 +215,48 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap items-center gap-3 text-xs sm:gap-4 sm:text-sm">
-        <button
-          type="button"
-          onClick={() => toggleHidden('blue')}
-          aria-pressed={!hidden.blue}
-          className={`flex items-center gap-1.5 ${hidden.blue ? 'opacity-40' : ''}`}
-        >
-          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
-          <span className="text-text">
-            💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => toggleHidden('purple')}
-          aria-pressed={!hidden.purple}
-          className={`flex items-center gap-1.5 ${hidden.purple ? 'opacity-40' : ''}`}
-        >
-          <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
-          <span className="text-text">
-            💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => toggleHidden('avg')}
-          aria-pressed={!hidden.avg}
-          className={`flex items-center gap-1.5 ${hidden.avg ? 'opacity-40' : ''}`}
-        >
-          <span
-            className="inline-block h-0.5 w-4 rounded-full"
-            style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
-          />
-          <span className="text-muted">
-            Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
-          </span>
-        </button>
+        {showBlue && (
+          <button
+            type="button"
+            onClick={() => toggleHidden('blue')}
+            aria-pressed={!hidden.blue}
+            className={`flex items-center gap-1.5 ${hidden.blue ? 'opacity-40' : ''}`}
+          >
+            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-blue)' }} />
+            <span className="text-text">
+              💙{totalBlue != null && <> {formatRating(totalBlue)}/10</>}
+            </span>
+          </button>
+        )}
+        {showPurple && (
+          <button
+            type="button"
+            onClick={() => toggleHidden('purple')}
+            aria-pressed={!hidden.purple}
+            className={`flex items-center gap-1.5 ${hidden.purple ? 'opacity-40' : ''}`}
+          >
+            <span className="inline-block h-0.5 w-4 rounded-full" style={{ background: 'var(--chart-purple)' }} />
+            <span className="text-text">
+              💜{totalPurple != null && <> {formatRating(totalPurple)}/10</>}
+            </span>
+          </button>
+        )}
+        {showAvg && (
+          <button
+            type="button"
+            onClick={() => toggleHidden('avg')}
+            aria-pressed={!hidden.avg}
+            className={`flex items-center gap-1.5 ${hidden.avg ? 'opacity-40' : ''}`}
+          >
+            <span
+              className="inline-block h-0.5 w-4 rounded-full"
+              style={{ background: 'var(--color-muted)', backgroundImage: 'repeating-linear-gradient(90deg, var(--color-muted) 0 4px, transparent 4px 7px)' }}
+            />
+            <span className="text-muted">
+              Media{totalAverage != null && <> {formatRating(totalAverage)}/10</>}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* width fills containerWidth when there's room (reactive — a short
@@ -308,7 +323,7 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
             />
           )}
 
-          {!hidden.avg && (
+          {showAvg && !hidden.avg && (
             <path
               d={linePath('avg')}
               fill="none"
@@ -318,19 +333,19 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
               strokeLinecap="round"
             />
           )}
-          {!hidden.blue && (
+          {showBlue && !hidden.blue && (
             <path d={linePath('blue')} fill="none" stroke="var(--chart-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           )}
-          {!hidden.purple && (
+          {showPurple && !hidden.purple && (
             <path d={linePath('purple')} fill="none" stroke="var(--chart-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           )}
 
           {data.map((d, i) => (
             <g key={d.key}>
-              {d.blue != null && !hidden.blue && (
+              {showBlue && d.blue != null && !hidden.blue && (
                 <circle cx={xFor(i)} cy={yFor(d.blue)} r="4" fill="var(--chart-blue)" stroke="var(--color-surface)" strokeWidth="2" />
               )}
-              {d.purple != null && !hidden.purple && (
+              {showPurple && d.purple != null && !hidden.purple && (
                 <circle cx={xFor(i)} cy={yFor(d.purple)} r="4" fill="var(--chart-purple)" stroke="var(--color-surface)" strokeWidth="2" />
               )}
             </g>
@@ -355,17 +370,17 @@ export default function RatingChart({ data, totalBlue, totalPurple, totalAverage
       {hovered && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs">
           <span className="font-medium text-text">{hovered.key}</span>
-          {hovered.blue != null && !hidden.blue && (
+          {showBlue && hovered.blue != null && !hidden.blue && (
             <span className="text-muted">
               💙 <strong className="text-text">{formatRating(hovered.blue)}</strong>
             </span>
           )}
-          {hovered.purple != null && !hidden.purple && (
+          {showPurple && hovered.purple != null && !hidden.purple && (
             <span className="text-muted">
               💜 <strong className="text-text">{formatRating(hovered.purple)}</strong>
             </span>
           )}
-          {!hidden.avg && (
+          {showAvg && !hidden.avg && (
             <span className="text-muted">
               Media <strong className="text-text">{formatRating(hovered.avg)}</strong>
             </span>

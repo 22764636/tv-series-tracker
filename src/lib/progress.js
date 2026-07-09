@@ -152,6 +152,19 @@ export function ratedEpisodeNumbers(series) {
   return [...numbers].sort((a, b) => a - b)
 }
 
+// A series is shared by default (`series.viewer` unset) — both hearts apply,
+// unchanged from before this field existed. Setting `viewer` to 'blue' or
+// 'purple' marks it as watched solo by just that person: the other heart
+// isn't merely empty, it's not applicable at all, so every rating surface
+// (total, per-episode, chart) hides its controls for the other heart
+// entirely rather than showing an empty/greyed-out one. Returns null for a
+// shared series so callers can do `solo !== 'purple'` / `solo !== 'blue'` to
+// decide whether to render a given heart's UI (true for both a shared
+// series and the one it applies to).
+export function soloViewer(series) {
+  return series.viewer === 'blue' || series.viewer === 'purple' ? series.viewer : null
+}
+
 // The series-level total for one heart stops being manually editable once
 // EVERY episode already has that heart rated — at that point the aggregate
 // in aggregateHeartRating() is the only correct value and nothing will ever

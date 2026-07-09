@@ -151,6 +151,7 @@
   <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
   <tr><td>Status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>.</td></tr>
   <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill. <code class="class">grid grid-cols-7 gap-1 sm:gap-1.5</code> at <strong>every</strong> breakpoint, not just mobile — 7 equal-width columns dividing the real available container width, guaranteeing one row regardless of viewport. Two earlier fixed-width attempts (<code class="class">w-10</code> on mobile, then <code class="class">sm:w-28</code> on desktop) each wrapped to two rows on some real device/viewport the test setup hadn't covered; removing the breakpoint-specific fixed width entirely removes that whole class of bug. Pills: <code class="class">rounded-full border py-1 text-xs font-medium sm:text-sm</code>; only the label text switches by breakpoint (short 1-2 letter vs full day name), never the column width. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
+  <tr><td>Viewer pill picker</td><td>Exact same classes as the status pill toggle above (<code class="class">rounded-full border px-3 py-1 text-xs font-medium</code>), 3 options: "Entrambi" (default/shared) / 💙 / 💜. <code class="class">src/components/ViewerPicker.jsx</code>, shared by <code class="class">AddSeriesModal</code> (choosing at creation) and <code class="class">SeriesDetail</code> (editable later, next to the status pills) — same visual family deliberately, not a new pattern.</td></tr>
 </table>
 
 <h2>Status badges</h2>
@@ -239,10 +240,11 @@
   see <code class="class">heartFullyRated()</code> in progress.js for why it's "every episode", not "any episode".
 </p>
 
-<h2>Icon family (Search / Refresh / Close / Share)</h2>
+<h2>Icon family (Search / Refresh / Close / Share / Calendar)</h2>
 <p class="lede">
   <code class="class">SearchIcon.jsx</code>, <code class="class">RefreshIcon.jsx</code>,
-  <code class="class">CloseIcon.jsx</code> and <code class="class">ShareIcon.jsx</code> are deliberately one visual
+  <code class="class">CloseIcon.jsx</code>, <code class="class">ShareIcon.jsx</code> and
+  <code class="class">CalendarIcon.jsx</code> are deliberately one visual
   family — <code class="class">viewBox="0 0 24 24"</code>, <code class="class">stroke="currentColor"</code>,
   <code class="class">stroke-width="2"</code>, <code class="class">stroke-linecap="round"</code> — instead of mixing
   hand-drawn SVGs with Unicode text glyphs (<code class="class">↻</code>, <code class="class">✕</code>) as earlier
@@ -254,6 +256,9 @@
   <code class="class">RefreshIcon.jsx</code> is the classic two-arrow circular refresh (<code
   class="class">refresh-cw</code>), not a single 270° arc with one arrowhead tucked in a corner — more symmetric and
   reads as "refresh" faster at a glance. <code class="class">ShareIcon.jsx</code> is the three-node share glyph.
+  <code class="class">CalendarIcon.jsx</code> is a rounded page with two binder tabs and a header rule — replaces the
+  "Calendario" text link in <code class="class">Header.jsx</code> below the <code class="class">sm</code> breakpoint,
+  where there isn't room to spell it out (the header also carries the 💙/💜 filter and search there).
 </p>
 <div class="row" style="align-items:center; gap:10px">
   <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
@@ -267,6 +272,9 @@
   </button>
   <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+  </button>
+  <button style="border-radius:999px; padding:6px; border:none; background:none; color:var(--muted); cursor:pointer">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
   </button>
 </div>
 
@@ -482,23 +490,27 @@
 <h2>Sort control (Home)</h2>
 <p class="lede">
   Native <code class="class">&lt;select&gt;</code> in <code class="class">rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text shrink-0</code>,
-  same row as <code class="class">StatusTabs</code> (parent: <code class="class">flex items-center gap-3</code>, tabs wrapped in
+  same row as the status <code class="class">PillTabs</code> (parent: <code class="class">flex items-center gap-3</code>, tabs wrapped in
   <code class="class">min-w-0 flex-1</code> so they can shrink/scroll instead of wrapping the select onto a second row).
   Options: ultimo aggiornamento (default), titolo (A-Z), valutazione, progresso — comparator lives in
   <code class="class">Home.jsx</code>, reusing <code class="class">progressRatio</code> from progress.js rather than re-deriving it.
 </p>
 
-<h2>StatusTabs (horizontal scroll on mobile)</h2>
+<h2>PillTabs (horizontal scroll on mobile)</h2>
 <p class="lede">
+  <code class="class">src/components/PillTabs.jsx</code> (renamed from <code class="class">StatusTabs.jsx</code> in
+  anticipation of a second use that later moved elsewhere — see below — but the generic name and <code
+  class="class">tabs</code> prop, defaulting to the status list, stayed since another filter may reuse it again).
   Wrapper: <code class="class">no-scrollbar flex gap-2 overflow-x-auto</code>; each pill button has
-  <code class="class">shrink-0</code> added so it never squishes. On narrow screens where all status pills don't fit
+  <code class="class">shrink-0</code> added so it never squishes. On narrow screens where all pills don't fit
   the row, it scrolls horizontally (touch/wheel) instead of wrapping to a second row and pushing the series grid
   down. <code class="class">.no-scrollbar</code> (in <code class="class">src/index.css</code>) hides the scrollbar track
   cross-browser while leaving scrolling itself enabled — used here and anywhere else a horizontally-scrollable row
-  shouldn't show a visible track.
+  shouldn't show a visible track. Currently drives only the status filter (Tutte/In corso/Da vedere/...) on
+  <code class="class">Home.jsx</code>.
 </p>
 
-<h2>Header logo + nav links</h2>
+<h2>Header logo + nav links + viewer filter</h2>
 <p class="lede">
   Logo: the real app artwork (<code class="class">&lt;img src={`${import.meta.env.BASE_URL}icon-512.png`}&gt;</code>,
   <code class="class">h-9 w-9 sm:h-10 sm:w-10</code>) — not the <code class="class">💙💜</code> text emoji used in an
@@ -506,8 +518,30 @@
   and <code class="class">manifest.json</code>'s <code class="class">name</code> for the same reason). Icon-only at
   every width, no wordmark next to it — once the icon was the real artwork instead of emoji, a text name alongside it
   felt redundant rather than clarifying. The logo links to <code class="class">/</code> (Libreria); "Calendario" is the
-  only other nav link — a separate "Libreria" text link used to sit next to it, but it pointed at the exact same
-  route the logo already does, so it was dropped as pure duplication rather than kept "for symmetry".
+  only other explicit nav link — a separate "Libreria" text link used to sit next to it, but it pointed at the exact
+  same route the logo already does, so it was dropped as pure duplication rather than kept "for symmetry".
+</p>
+<p class="lede">
+  <strong>Mobile space compression</strong> (below <code class="class">sm</code>): "Calendario" collapses to
+  <code class="class">CalendarIcon.jsx</code> and "+ Aggiungi serie" collapses to just "+" — same
+  <code class="class">&lt;Link&gt;</code>/<code class="class">&lt;button&gt;</code> and same handler either way, only
+  the inner content swaps via <code class="class">sm:hidden</code> / <code class="class">hidden sm:inline</code>
+  (not two separate elements). Frees up room for the viewer filter below, which the header now always carries.
+</p>
+<p class="lede">
+  <strong>Viewer filter</strong> (<code class="class">ViewerHeaderFilter</code>, inline in
+  <code class="class">Header.jsx</code>): two icon buttons, 💙 and 💜 — <code class="class">flex h-8 w-8
+  items-center justify-center rounded-full text-base</code> (same box size as the title-row icon buttons below),
+  active state <code class="class">bg-accent-solid</code>, inactive <code class="class">hover:bg-surface-hover</code>
+  (borrows the pill toggle's "solid when active" color convention onto the icon-button's circular shape, since this
+  is a persistent toggle rather than a momentary action like share/refresh). Each is a <code
+  class="class">&lt;Link&gt;</code> to <code class="class">/?viewer=blue|purple</code> (clearing/merging with
+  whatever <code class="class">status</code>/<code class="class">sort</code> params are already on the URL when
+  already on <code class="class">/</code>); clicking the already-active one clears the param instead of setting it —
+  there's no separate "Tutte" button, only room for the two hearts, so deselecting the active one is how you get back
+  to unfiltered. Lives in the header (outside <code class="class">&lt;Routes&gt;</code> in <code
+  class="class">App.jsx</code>) rather than on the <code class="class">Home.jsx</code> page itself specifically so
+  it's reachable from every page, not just the library.
 </p>
 
 <h2>Calendario (month grid)</h2>

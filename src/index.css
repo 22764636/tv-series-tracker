@@ -76,7 +76,7 @@ body {
   box-sizing: border-box;
 }
 
-/* Horizontally-scrollable rows (e.g. StatusTabs on mobile) that shouldn't
+/* Horizontally-scrollable rows (e.g. PillTabs on mobile) that shouldn't
    show a visible scrollbar track — scrolling still works via touch/wheel. */
 .no-scrollbar {
   scrollbar-width: none;

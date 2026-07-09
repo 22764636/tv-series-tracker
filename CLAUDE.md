@@ -157,7 +157,15 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     ridondante (il pattern logo-porta-alla-home è una convenzione web
     universale e a costo zero, un secondo link esplicito allo stesso
     posto non aggiungeva nulla), lasciando "Calendario" come unico link
-    di navigazione esplicito.
+    di navigazione esplicito testuale — sotto `sm`, per spazio (l'header
+    ospita anche il filtro 💙/💜 e la ricerca, vedi sotto), diventa
+    un'icona (`CalendarIcon.jsx`, stessa famiglia SVG di Search/Share/
+    Refresh/Close) invece del testo; da `sm` in su resta il testo
+    "Calendario" come prima — stesso `<Link>`, solo il contenuto interno
+    cambia per breakpoint (`sm:hidden`/`hidden sm:inline`), non due link
+    separati. Stesso trattamento per il bottone "+ Aggiungi serie":
+    sotto `sm` mostra solo "+", da `sm` in su il testo completo — la sua
+    `onClick` non cambia, resta lo stesso bottone.
     `apple-touch-icon.png`
     (180×180, sfondo pieno perché iOS non supporta trasparenza) è
     generato dalla stessa artwork. Se si aggiorna l'icona, farlo
@@ -504,6 +512,61 @@ dal codice reale è peggio che non averla.
     `validate_palette.js` della skill dataviz per separazione CVD e
     contrasto contro `bg-surface`, sia chiaro che scuro. Non toccare questi
     due valori senza rivalidarli.
+- **Serie solo-viste da una persona sola** (`series.viewer`, opzionale —
+  assente = condivisa/entrambi, comportamento invariato per ogni serie
+  precedente a questo campo): non ogni serie viene guardata da entrambi, es.
+  una serie che interessa solo a 💙. `viewer: 'blue' | 'purple'` marca quella
+  serie come solo-vista da quella persona — l'altro cuore non è "vuoto", è
+  proprio **non applicabile**, quindi ogni superficie di valutazione lo
+  nasconde del tutto invece di mostrarlo vuoto/disabilitato:
+  - **`RatingRow`** (voto totale): l'`HeartRating` dell'altro cuore non
+    viene renderizzato.
+  - **`SeasonBlock`** (voto per episodio): stessa cosa, riga per riga.
+  - **`RatingChart`** (prop `viewer`, passata da `RatingChartSection` via
+    `soloViewer()` in `progress.js`): la legenda/linea/tooltip dell'altro
+    cuore sparisce, e la linea "Media" sparisce **anch'essa del tutto** (non
+    solo se nascosta a mano) — con un solo votante la media coincide sempre
+    con quell'unico valore, quindi mostrarla sarebbe la stessa
+    duplicazione pura già risolta sopra per "Valutazione: X/10".
+  - **Impostabile/modificabile in qualsiasi momento** (`ViewerPicker` in
+    `src/components/ViewerPicker.jsx`, condiviso tra `AddSeriesModal` — scelta
+    all'aggiunta, default "Entrambi" — e `SeriesDetail` — modificabile dopo,
+    riga sotto le pillole di stato, `setViewer` in `VaultContext.jsx`).
+    **Non distruttivo**, stesso principio di link/Wikipedia/visibilità voto:
+    passare da condivisa a solo (o viceversa) non cancella mai
+    `ratingBlue`/`ratingPurple`/`episodeRatings` dell'altro cuore, si limita
+    a nascondere/mostrare i controlli. Caso concreto verificato: una serie
+    guardata da 💙 da sola per i primi episodi, poi diventata condivisa a
+    metà stagione quando 💜 si aggiunge — non serve nessuna logica ad-hoc,
+    perché `aggregateHeartRating()` già media ciascun cuore
+    **indipendentemente** sui soli episodi che quel cuore ha votato: il
+    totale di 💙 resta la media dei suoi voti (magari su tutti gli episodi),
+    quello di 💜 la media dei suoi (magari solo da metà stagione in poi),
+    senza bisogno che 💜 recuperi voti sugli episodi visti solo da 💙.
+  - **Filtro in Libreria, nell'header** (`ViewerHeaderFilter` in
+    `Header.jsx`, non in `Home.jsx`): due bottoni icona 💙/💜 nell'header,
+    quindi raggiungibili da **ogni** pagina (l'header sta fuori da
+    `<Routes>` in `App.jsx`, non solo su `Home`) — cliccarli naviga a `/`
+    con `?viewer=blue|purple` impostato nell'URL. Una prima versione li
+    metteva come terza riga di pillole (con una "Tutte" esplicita) sotto
+    stato+ordinamento in `Home.jsx`, stesso componente `PillTabs` della riga
+    di stato — spostata nell'header su richiesta esplicita dell'utente per
+    renderla raggiungibile ovunque, non solo dalla Libreria. Senza spazio
+    per una terza pillola "Tutte" accanto alle due icone, **cliccare
+    l'icona già attiva la disattiva** (torna a "Tutte") invece di avere un
+    bottone dedicato — stesso risultato, gesto diverso. Da una pagina
+    diversa da `/` il click naviga comunque a `/?viewer=...` (nessuno stato
+    attivo da disattivare, quindi solo "attiva"); da `/` preserva gli altri
+    parametri (`status`/`sort`) già in URL. Lettura del filtro
+    (`?viewer=blue|purple`, stesso pattern di fallback su valore
+    sconosciuto/assente di `?status=`/`?sort=`, chiave `VIEWER_KEYS`) resta
+    in `Home.jsx`, che applica il filtro alla griglia — solo la scrittura
+    (i due bottoni) si è spostata. **Filtro stretto**: "solo 💙" mostra
+    **solo** le serie marcate `viewer: 'blue'`, non anche quelle condivise
+    (scelta esplicita, non "tutto ciò che guardo io incluse le condivise").
+    La sezione "Da vedere oggi" in cima a `Home.jsx` **non** è scoped da
+    questo filtro, stesso motivo per cui non lo è già da stato/ordinamento
+    (vedi sopra: è un richiamo fisso, non una vista filtrata).
 - **Durata episodi e tempo rimanente**:
   - `series.episodeDurations[SxEy]` (minuti). Per le serie TMDB, scaricata
     automaticamente — `getEpisodeDurations` in `tmdb.js` fa una chiamata
