@@ -553,20 +553,30 @@ dal codice reale è peggio che non averla.
     di stato — spostata nell'header su richiesta esplicita dell'utente per
     renderla raggiungibile ovunque, non solo dalla Libreria. Senza spazio
     per una terza pillola "Tutte" accanto alle due icone, **cliccare
-    l'icona già attiva la disattiva** (torna a "Tutte") invece di avere un
-    bottone dedicato — stesso risultato, gesto diverso. Da una pagina
-    diversa da `/` il click naviga comunque a `/?viewer=...` (nessuno stato
-    attivo da disattivare, quindi solo "attiva"); da `/` preserva gli altri
-    parametri (`status`/`sort`) già in URL. Lettura del filtro
+    l'icona già attiva la disattiva** (torna al default, vedi sotto) invece
+    di avere un bottone dedicato — stesso risultato, gesto diverso. Da una
+    pagina diversa da `/` il click naviga comunque a `/?viewer=...` (nessuno
+    stato attivo da disattivare, quindi solo "attiva"); da `/` preserva gli
+    altri parametri (`status`/`sort`) già in URL. Lettura del filtro
     (`?viewer=blue|purple`, stesso pattern di fallback su valore
     sconosciuto/assente di `?status=`/`?sort=`, chiave `VIEWER_KEYS`) resta
     in `Home.jsx`, che applica il filtro alla griglia — solo la scrittura
-    (i due bottoni) si è spostata. **Filtro stretto**: "solo 💙" mostra
-    **solo** le serie marcate `viewer: 'blue'`, non anche quelle condivise
-    (scelta esplicita, non "tutto ciò che guardo io incluse le condivise").
-    La sezione "Da vedere oggi" in cima a `Home.jsx` **non** è scoped da
-    questo filtro, stesso motivo per cui non lo è già da stato/ordinamento
-    (vedi sopra: è un richiamo fisso, non una vista filtrata).
+    (i due bottoni) si è spostata. **Il default (nessun 💙/💜 attivo) mostra
+    solo le condivise, non tutte le serie mischiate insieme** — bug reale
+    corretto: la prima versione trattava "nessun filtro" come "ogni serie a
+    prescindere dal viewer" (comportamento ereditato da prima che
+    esistessero le serie solo, quando ogni serie era per forza condivisa),
+    il che faceva comparire le serie solo-💙/solo-💜 anche nella vista
+    principale della libreria invece che solo dietro il filtro esplicito.
+    La vista di default della Libreria è la libreria condivisa; le solo
+    sono una vista a parte, mai mescolata. "Solo 💙" mostra **solo** le
+    serie marcate `viewer: 'blue'`, non anche quelle condivise (scelta
+    esplicita, non "tutto ciò che guardo io incluse le condivise") — le tre
+    viste (default/condivise, solo-💙, solo-💜) sono quindi reciprocamente
+    esclusive, senza sovrapposizioni. La sezione "Da vedere oggi" in cima a
+    `Home.jsx` **non** è scoped da questo filtro (continua a includere le
+    solo), stesso motivo per cui non lo è già da stato/ordinamento (vedi
+    sopra: è un richiamo fisso, non una vista filtrata).
 - **Durata episodi e tempo rimanente**:
   - `series.episodeDurations[SxEy]` (minuti). Per le serie TMDB, scaricata
     automaticamente — `getEpisodeDurations` in `tmdb.js` fa una chiamata

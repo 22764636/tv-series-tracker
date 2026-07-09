@@ -539,7 +539,9 @@
   whatever <code class="class">status</code>/<code class="class">sort</code> params are already on the URL when
   already on <code class="class">/</code>); clicking the already-active one clears the param instead of setting it —
   there's no separate "Tutte" button, only room for the two hearts, so deselecting the active one is how you get back
-  to unfiltered. Lives in the header (outside <code class="class">&lt;Routes&gt;</code> in <code
+  to the default. That default (no heart active) shows <strong>only shared series</strong>, not every series
+  regardless of viewer — a solo-watched one is only visible behind its own heart filter, never mixed into the main
+  view. Lives in the header (outside <code class="class">&lt;Routes&gt;</code> in <code
   class="class">App.jsx</code>) rather than on the <code class="class">Home.jsx</code> page itself specifically so
   it's reachable from every page, not just the library.
 </p>
