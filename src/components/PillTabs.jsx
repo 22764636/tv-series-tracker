@@ -1,4 +1,4 @@
-const TABS = [
+export const STATUS_TABS = [
   { key: 'all', label: 'Tutte' },
   { key: 'watching', label: 'In corso' },
   { key: 'planned', label: 'Da vedere' },
@@ -7,10 +7,15 @@ const TABS = [
   { key: 'dropped', label: 'Abbandonate' },
 ]
 
-export default function StatusTabs({ active, onChange }) {
+// Generic horizontal-scroll pill-tab row (was StatusTabs, hardcoded to the
+// status filter only) — reused as-is for the viewer filter in Home.jsx
+// (tabs=VIEWER_TABS) so both filters look and behave identically instead of
+// two near-duplicate components. `tabs` defaults to the status list so the
+// original call site didn't need to change.
+export default function PillTabs({ active, onChange, tabs = STATUS_TABS }) {
   return (
     <div className="no-scrollbar flex gap-2 overflow-x-auto">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = tab.key === active
         return (
           <button

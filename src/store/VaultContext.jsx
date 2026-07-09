@@ -109,6 +109,19 @@ export function VaultProvider({ children }) {
     await updateDoc(vaultRef, withUpdatedAt(id, { [`series.${id}.watchDays`]: days }))
   }
 
+  // 'blue'/'purple' marks a series as solo-watched by just that person; null
+  // (or any other falsy value) clears it back to shared/both — same
+  // clear-goes-to-default pattern as setLink/setWikipediaLink. Never touches
+  // ratingBlue/ratingPurple/episodeRatings: switching solo<->shared only
+  // changes which heart's UI is shown (see soloViewer in progress.js), it
+  // never deletes whatever the other heart already rated.
+  async function setViewer(id, viewer) {
+    await updateDoc(
+      vaultRef,
+      withUpdatedAt(id, { [`series.${id}.viewer`]: viewer ? viewer : deleteField() }),
+    )
+  }
+
   // Two independent ratings (blue heart / purple heart, one per person) —
   // the displayed rating is their average (see averageRating in progress.js).
   // This manual total is only "sticky" while no per-episode ratings exist for
@@ -259,6 +272,7 @@ export function VaultProvider({ children }) {
     setStatus,
     setLink,
     setWatchDays,
+    setViewer,
     setRating,
     setEpisodeRating,
     setEpisodeDuration,

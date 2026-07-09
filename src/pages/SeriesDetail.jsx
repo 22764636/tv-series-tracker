@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import RefreshIcon from '../components/RefreshIcon'
 import CloseIcon from '../components/CloseIcon'
 import ShareIcon from '../components/ShareIcon'
+import ViewerPicker from '../components/ViewerPicker'
 import {
   progressRatio,
   totalEpisodes,
@@ -22,6 +23,7 @@ import {
   heartFullyRated,
   remainingMinutes,
   formatDuration,
+  soloViewer,
 } from '../lib/progress'
 import { WEEKDAYS } from '../lib/schedule'
 import { wikipediaUrl } from '../lib/wikipedia'
@@ -34,6 +36,7 @@ export default function SeriesDetail() {
     setStatus,
     setLink,
     setWatchDays,
+    setViewer,
     setRating,
     setEpisodeRating,
     setEpisodeDuration,
@@ -190,6 +193,12 @@ export default function SeriesDetail() {
               )
             })}
           </div>
+
+          <ViewerPicker
+            value={series.viewer ?? null}
+            onChange={(v) => setViewer(series.id, v)}
+            label="Chi guarda"
+          />
 
           <div>
             <ProgressBar ratio={progressRatio(series)} />
@@ -499,6 +508,7 @@ function RatingRow({ series, onSetRating, hasChart }) {
   if (series.status !== 'completed' || hasChart) return null
 
   const rating = averageRating(series)
+  const solo = soloViewer(series)
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -506,18 +516,22 @@ function RatingRow({ series, onSetRating, hasChart }) {
         <span className="text-sm text-text">Valutazione: {formatRating(rating)}/10</span>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <HeartRating
-          label="💙"
-          value={series.ratingBlue}
-          onSave={(v) => onSetRating('blue', v)}
-          locked={heartFullyRated(series, 'blue')}
-        />
-        <HeartRating
-          label="💜"
-          value={series.ratingPurple}
-          onSave={(v) => onSetRating('purple', v)}
-          locked={heartFullyRated(series, 'purple')}
-        />
+        {solo !== 'purple' && (
+          <HeartRating
+            label="💙"
+            value={series.ratingBlue}
+            onSave={(v) => onSetRating('blue', v)}
+            locked={heartFullyRated(series, 'blue')}
+          />
+        )}
+        {solo !== 'blue' && (
+          <HeartRating
+            label="💜"
+            value={series.ratingPurple}
+            onSave={(v) => onSetRating('purple', v)}
+            locked={heartFullyRated(series, 'purple')}
+          />
+        )}
       </div>
     </div>
   )
@@ -672,6 +686,7 @@ function RatingChartSection({ series, fullData, totalBlue, totalPurple, totalAve
           totalBlue={totalBlue}
           totalPurple={totalPurple}
           totalAverage={totalAverage}
+          viewer={soloViewer(series)}
         />
       ) : (
         <p className="text-sm text-muted">Nessun episodio valutato in questa vista.</p>
@@ -702,6 +717,7 @@ function SeasonBlock({
     return watched || series.source === 'manual' || hasDuration
   })
   const seasonRemaining = remainingMinutes(series, season.number)
+  const solo = soloViewer(series)
   const [showUnwatchConfirm, setShowUnwatchConfirm] = useState(false)
 
   function handleToggleSeasonClick() {
@@ -805,16 +821,20 @@ function SeasonBlock({
                   />
                   {watched && (
                     <>
-                      <HeartRating
-                        label="💙"
-                        value={rating?.blue}
-                        onSave={(v) => onSetEpisodeRating(season.number, ep, 'blue', v)}
-                      />
-                      <HeartRating
-                        label="💜"
-                        value={rating?.purple}
-                        onSave={(v) => onSetEpisodeRating(season.number, ep, 'purple', v)}
-                      />
+                      {solo !== 'purple' && (
+                        <HeartRating
+                          label="💙"
+                          value={rating?.blue}
+                          onSave={(v) => onSetEpisodeRating(season.number, ep, 'blue', v)}
+                        />
+                      )}
+                      {solo !== 'blue' && (
+                        <HeartRating
+                          label="💜"
+                          value={rating?.purple}
+                          onSave={(v) => onSetEpisodeRating(season.number, ep, 'purple', v)}
+                        />
+                      )}
                     </>
                   )}
                 </div>

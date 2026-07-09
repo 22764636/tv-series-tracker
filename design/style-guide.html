@@ -151,6 +151,7 @@
   <tr><td>Destructive text action</td><td><code class="class">text-danger hover:underline</code> (e.g. "Elimina serie")</td></tr>
   <tr><td>Status pill toggle</td><td><code class="class">rounded-full border px-3 py-1 text-xs font-medium</code> — active: <code class="class">border-accent-solid bg-accent-solid text-white</code>, inactive: <code class="class">border-border text-muted hover:bg-surface-hover</code>, disabled (locked): add <code class="class">cursor-not-allowed opacity-50</code>.</td></tr>
   <tr><td>Day-of-week pill toggle</td><td>Same active/inactive/disabled colors as the status pill. <code class="class">grid grid-cols-7 gap-1 sm:gap-1.5</code> at <strong>every</strong> breakpoint, not just mobile — 7 equal-width columns dividing the real available container width, guaranteeing one row regardless of viewport. Two earlier fixed-width attempts (<code class="class">w-10</code> on mobile, then <code class="class">sm:w-28</code> on desktop) each wrapped to two rows on some real device/viewport the test setup hadn't covered; removing the breakpoint-specific fixed width entirely removes that whole class of bug. Pills: <code class="class">rounded-full border py-1 text-xs font-medium sm:text-sm</code>; only the label text switches by breakpoint (short 1-2 letter vs full day name), never the column width. Used by <code class="class">WatchDaysRow</code> in SeriesDetail.jsx.</td></tr>
+  <tr><td>Viewer pill picker</td><td>Exact same classes as the status pill toggle above (<code class="class">rounded-full border px-3 py-1 text-xs font-medium</code>), 3 options: "Entrambi" (default/shared) / 💙 / 💜. <code class="class">src/components/ViewerPicker.jsx</code>, shared by <code class="class">AddSeriesModal</code> (choosing at creation) and <code class="class">SeriesDetail</code> (editable later, next to the status pills) — same visual family deliberately, not a new pattern.</td></tr>
 </table>
 
 <h2>Status badges</h2>
@@ -482,20 +483,25 @@
 <h2>Sort control (Home)</h2>
 <p class="lede">
   Native <code class="class">&lt;select&gt;</code> in <code class="class">rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-text shrink-0</code>,
-  same row as <code class="class">StatusTabs</code> (parent: <code class="class">flex items-center gap-3</code>, tabs wrapped in
+  same row as the status <code class="class">PillTabs</code> (parent: <code class="class">flex items-center gap-3</code>, tabs wrapped in
   <code class="class">min-w-0 flex-1</code> so they can shrink/scroll instead of wrapping the select onto a second row).
   Options: ultimo aggiornamento (default), titolo (A-Z), valutazione, progresso — comparator lives in
   <code class="class">Home.jsx</code>, reusing <code class="class">progressRatio</code> from progress.js rather than re-deriving it.
 </p>
 
-<h2>StatusTabs (horizontal scroll on mobile)</h2>
+<h2>PillTabs (horizontal scroll on mobile)</h2>
 <p class="lede">
-  Wrapper: <code class="class">no-scrollbar flex gap-2 overflow-x-auto</code>; each pill button has
-  <code class="class">shrink-0</code> added so it never squishes. On narrow screens where all status pills don't fit
+  <code class="class">src/components/PillTabs.jsx</code> (renamed from <code class="class">StatusTabs.jsx</code> once it
+  gained a second use). Wrapper: <code class="class">no-scrollbar flex gap-2 overflow-x-auto</code>; each pill button has
+  <code class="class">shrink-0</code> added so it never squishes. On narrow screens where all pills don't fit
   the row, it scrolls horizontally (touch/wheel) instead of wrapping to a second row and pushing the series grid
   down. <code class="class">.no-scrollbar</code> (in <code class="class">src/index.css</code>) hides the scrollbar track
   cross-browser while leaving scrolling itself enabled — used here and anywhere else a horizontally-scrollable row
-  shouldn't show a visible track.
+  shouldn't show a visible track. Takes a <code class="class">tabs</code> prop (defaults to the status list) so the same
+  component drives two independent filters on <code class="class">Home.jsx</code> stacked in their own rows: status
+  (Tutte/In corso/Da vedere/...) and, below it, viewer (Tutte/💙/💜 — <code class="class">?viewer=</code> in the URL,
+  same unknown-value-falls-back-to-"all" pattern as status/sort). The viewer filter is strict: "solo 💙" shows only
+  series marked solo-💙, not shared ones too.
 </p>
 
 <h2>Header logo + nav links</h2>

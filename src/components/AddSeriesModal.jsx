@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Modal from './Modal'
 import CloseIcon from './CloseIcon'
+import ViewerPicker from './ViewerPicker'
 import { posterUrl, searchShows, getShowDetails, getEpisodeDurations, tmdbConfigured } from '../lib/tmdb'
 import { useVault, newManualId, tmdbSeriesId } from '../store/VaultContext'
 
@@ -45,6 +46,7 @@ function SearchTab({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [addingId, setAddingId] = useState(null)
+  const [viewer, setViewer] = useState(null)
   const { addSeries, getSeries } = useVault()
   const navigate = useNavigate()
 
@@ -94,6 +96,7 @@ function SearchTab({ onClose }) {
         seasons: details.seasons,
         ongoing: details.ongoing,
         episodeDurations,
+        ...(viewer ? { viewer } : {}),
       })
       onClose()
       navigate(`/serie/${id}`)
@@ -106,12 +109,13 @@ function SearchTab({ onClose }) {
 
   return (
     <div>
+      <ViewerPicker value={viewer} onChange={setViewer} label="Chi guarda" />
       <input
         autoFocus
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Cerca una serie TV..."
-        className="w-full rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent"
+        className="mt-3 w-full rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent"
       />
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       <div className="mt-3 flex max-h-80 flex-col gap-1 overflow-y-auto">
@@ -147,6 +151,7 @@ function ManualTab({ onClose }) {
   const [title, setTitle] = useState('')
   const [posterPath, setPosterPath] = useState('')
   const [seasons, setSeasons] = useState([{ number: 1, episodeCount: '' }])
+  const [viewer, setViewer] = useState(null)
   const [error, setError] = useState(null)
   const { addSeries } = useVault()
   const navigate = useNavigate()
@@ -182,6 +187,7 @@ function ManualTab({ onClose }) {
       title: title.trim(),
       posterPath: posterPath.trim() || null,
       seasons: cleanSeasons,
+      ...(viewer ? { viewer } : {}),
     })
     onClose()
     navigate(`/serie/${id}`)
@@ -199,6 +205,7 @@ function ManualTab({ onClose }) {
           className="w-full rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-accent"
         />
       </div>
+      <ViewerPicker value={viewer} onChange={setViewer} label="Chi guarda" />
       <div>
         <label className="mb-1 block text-sm font-medium text-text">
           URL poster <span className="text-muted">(opzionale)</span>

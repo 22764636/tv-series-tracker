@@ -504,6 +504,49 @@ dal codice reale è peggio che non averla.
     `validate_palette.js` della skill dataviz per separazione CVD e
     contrasto contro `bg-surface`, sia chiaro che scuro. Non toccare questi
     due valori senza rivalidarli.
+- **Serie solo-viste da una persona sola** (`series.viewer`, opzionale —
+  assente = condivisa/entrambi, comportamento invariato per ogni serie
+  precedente a questo campo): non ogni serie viene guardata da entrambi, es.
+  una serie che interessa solo a 💙. `viewer: 'blue' | 'purple'` marca quella
+  serie come solo-vista da quella persona — l'altro cuore non è "vuoto", è
+  proprio **non applicabile**, quindi ogni superficie di valutazione lo
+  nasconde del tutto invece di mostrarlo vuoto/disabilitato:
+  - **`RatingRow`** (voto totale): l'`HeartRating` dell'altro cuore non
+    viene renderizzato.
+  - **`SeasonBlock`** (voto per episodio): stessa cosa, riga per riga.
+  - **`RatingChart`** (prop `viewer`, passata da `RatingChartSection` via
+    `soloViewer()` in `progress.js`): la legenda/linea/tooltip dell'altro
+    cuore sparisce, e la linea "Media" sparisce **anch'essa del tutto** (non
+    solo se nascosta a mano) — con un solo votante la media coincide sempre
+    con quell'unico valore, quindi mostrarla sarebbe la stessa
+    duplicazione pura già risolta sopra per "Valutazione: X/10".
+  - **Impostabile/modificabile in qualsiasi momento** (`ViewerPicker` in
+    `src/components/ViewerPicker.jsx`, condiviso tra `AddSeriesModal` — scelta
+    all'aggiunta, default "Entrambi" — e `SeriesDetail` — modificabile dopo,
+    riga sotto le pillole di stato, `setViewer` in `VaultContext.jsx`).
+    **Non distruttivo**, stesso principio di link/Wikipedia/visibilità voto:
+    passare da condivisa a solo (o viceversa) non cancella mai
+    `ratingBlue`/`ratingPurple`/`episodeRatings` dell'altro cuore, si limita
+    a nascondere/mostrare i controlli. Caso concreto verificato: una serie
+    guardata da 💙 da sola per i primi episodi, poi diventata condivisa a
+    metà stagione quando 💜 si aggiunge — non serve nessuna logica ad-hoc,
+    perché `aggregateHeartRating()` già media ciascun cuore
+    **indipendentemente** sui soli episodi che quel cuore ha votato: il
+    totale di 💙 resta la media dei suoi voti (magari su tutti gli episodi),
+    quello di 💜 la media dei suoi (magari solo da metà stagione in poi),
+    senza bisogno che 💜 recuperi voti sugli episodi visti solo da 💙.
+  - **Filtro in Libreria** (`Home.jsx`, `?viewer=blue|purple` nell'URL,
+    stesso pattern di fallback su valore sconosciuto/assente di
+    `?status=`/`?sort=`): pillole 💙/💜/Tutte sotto la riga
+    stato+ordinamento, riusano lo stesso componente pillole della riga di
+    stato (`PillTabs.jsx` — rinominato da `StatusTabs.jsx` perché ora serve
+    per due filtri diversi, non solo lo stato: accetta una prop `tabs`,
+    default la lista stati esistente). **Filtro stretto**: "solo 💙" mostra
+    **solo** le serie marcate `viewer: 'blue'`, non anche quelle condivise
+    (scelta esplicita, non "tutto ciò che guardo io incluse le condivise").
+    La sezione "Da vedere oggi" in cima a `Home.jsx` **non** è scoped da
+    questo filtro, stesso motivo per cui non lo è già da stato/ordinamento
+    (vedi sopra: è un richiamo fisso, non una vista filtrata).
 - **Durata episodi e tempo rimanente**:
   - `series.episodeDurations[SxEy]` (minuti). Per le serie TMDB, scaricata
     automaticamente — `getEpisodeDurations` in `tmdb.js` fa una chiamata

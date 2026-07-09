@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useVault } from '../store/VaultContext'
 import SeriesCard from '../components/SeriesCard'
-import StatusTabs from '../components/StatusTabs'
+import PillTabs from '../components/PillTabs'
 import EmptyState from '../components/EmptyState'
 import ProgressBar from '../components/ProgressBar'
 import StatusBadge from '../components/StatusBadge'
@@ -16,8 +16,18 @@ const SORT_OPTIONS = [
   { key: 'progress', label: 'Progresso' },
 ]
 const SORT_KEYS = SORT_OPTIONS.map((o) => o.key)
-// Kept in sync with StatusTabs.jsx's own TABS keys.
+// Kept in sync with PillTabs.jsx's own STATUS_TABS keys.
 const STATUS_KEYS = ['all', 'watching', 'planned', 'completed', 'renewed', 'dropped']
+// Strict "mine" filter: a series only shows under 💙/💜 if it's marked solo
+// for that heart (series.viewer) — shared series don't show up under either,
+// only under "Tutte". 💙/💜 reuse the same two emoji used everywhere else
+// for the two people (ViewerPicker, HeartRating), never a new one.
+const VIEWER_TABS = [
+  { key: 'all', label: 'Tutte' },
+  { key: 'blue', label: '💙' },
+  { key: 'purple', label: '💜' },
+]
+const VIEWER_KEYS = VIEWER_TABS.map((o) => o.key)
 
 function sortSeries(list, sortKey) {
   const sorted = [...list]
@@ -50,6 +60,8 @@ export default function Home() {
   const tab = STATUS_KEYS.includes(rawTab) ? rawTab : 'all'
   const rawSort = searchParams.get('sort') ?? 'updated'
   const sortKey = SORT_KEYS.includes(rawSort) ? rawSort : 'updated'
+  const rawViewer = searchParams.get('viewer') ?? 'all'
+  const viewerFilter = VIEWER_KEYS.includes(rawViewer) ? rawViewer : 'all'
 
   function setTab(next) {
     setSearchParams((prev) => {
@@ -69,10 +81,21 @@ export default function Home() {
     })
   }
 
+  function setViewerFilter(next) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === 'all') params.delete('viewer')
+      else params.set('viewer', next)
+      return params
+    })
+  }
+
   const filtered = useMemo(() => {
-    const base = tab === 'all' ? series : series.filter((s) => s.status === tab)
-    return sortSeries(base, sortKey)
-  }, [series, tab, sortKey])
+    const byStatus = tab === 'all' ? series : series.filter((s) => s.status === tab)
+    const byViewer =
+      viewerFilter === 'all' ? byStatus : byStatus.filter((s) => s.viewer === viewerFilter)
+    return sortSeries(byViewer, sortKey)
+  }, [series, tab, viewerFilter, sortKey])
 
   // Reuses the same projection Calendario is built on (upcomingCalendarEntries),
   // scoped to just today's date — a series only shows up here if it still has
@@ -102,7 +125,7 @@ export default function Home() {
 
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <StatusTabs active={tab} onChange={setTab} />
+          <PillTabs active={tab} onChange={setTab} />
         </div>
         <select
           value={sortKey}
@@ -115,6 +138,10 @@ export default function Home() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="mt-3">
+        <PillTabs active={viewerFilter} onChange={setViewerFilter} tabs={VIEWER_TABS} />
       </div>
 
       {filtered.length === 0 ? (
