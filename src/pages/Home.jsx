@@ -78,8 +78,14 @@ export default function Home() {
 
   const filtered = useMemo(() => {
     const byStatus = tab === 'all' ? series : series.filter((s) => s.status === tab)
+    // Default (no 💙/💜 filter active) shows only shared series, not every
+    // series lumped together — a solo-watched one only appears once you
+    // explicitly pick that heart in the header. "Tutte" here means "every
+    // status", not "every viewer"; those are independent axes.
     const byViewer =
-      viewerFilter === 'all' ? byStatus : byStatus.filter((s) => s.viewer === viewerFilter)
+      viewerFilter === 'all'
+        ? byStatus.filter((s) => !s.viewer)
+        : byStatus.filter((s) => s.viewer === viewerFilter)
     return sortSeries(byViewer, sortKey)
   }, [series, tab, viewerFilter, sortKey])
 
