@@ -157,7 +157,15 @@ Webapp gratuita e multi-device per tenere traccia delle serie TV guardate
     ridondante (il pattern logo-porta-alla-home è una convenzione web
     universale e a costo zero, un secondo link esplicito allo stesso
     posto non aggiungeva nulla), lasciando "Calendario" come unico link
-    di navigazione esplicito.
+    di navigazione esplicito testuale — sotto `sm`, per spazio (l'header
+    ospita anche il filtro 💙/💜 e la ricerca, vedi sotto), diventa
+    un'icona (`CalendarIcon.jsx`, stessa famiglia SVG di Search/Share/
+    Refresh/Close) invece del testo; da `sm` in su resta il testo
+    "Calendario" come prima — stesso `<Link>`, solo il contenuto interno
+    cambia per breakpoint (`sm:hidden`/`hidden sm:inline`), non due link
+    separati. Stesso trattamento per il bottone "+ Aggiungi serie":
+    sotto `sm` mostra solo "+", da `sm` in su il testo completo — la sua
+    `onClick` non cambia, resta lo stesso bottone.
     `apple-touch-icon.png`
     (180×180, sfondo pieno perché iOS non supporta trasparenza) è
     generato dalla stessa artwork. Se si aggiorna l'icona, farlo
@@ -535,13 +543,25 @@ dal codice reale è peggio che non averla.
     totale di 💙 resta la media dei suoi voti (magari su tutti gli episodi),
     quello di 💜 la media dei suoi (magari solo da metà stagione in poi),
     senza bisogno che 💜 recuperi voti sugli episodi visti solo da 💙.
-  - **Filtro in Libreria** (`Home.jsx`, `?viewer=blue|purple` nell'URL,
-    stesso pattern di fallback su valore sconosciuto/assente di
-    `?status=`/`?sort=`): pillole 💙/💜/Tutte sotto la riga
-    stato+ordinamento, riusano lo stesso componente pillole della riga di
-    stato (`PillTabs.jsx` — rinominato da `StatusTabs.jsx` perché ora serve
-    per due filtri diversi, non solo lo stato: accetta una prop `tabs`,
-    default la lista stati esistente). **Filtro stretto**: "solo 💙" mostra
+  - **Filtro in Libreria, nell'header** (`ViewerHeaderFilter` in
+    `Header.jsx`, non in `Home.jsx`): due bottoni icona 💙/💜 nell'header,
+    quindi raggiungibili da **ogni** pagina (l'header sta fuori da
+    `<Routes>` in `App.jsx`, non solo su `Home`) — cliccarli naviga a `/`
+    con `?viewer=blue|purple` impostato nell'URL. Una prima versione li
+    metteva come terza riga di pillole (con una "Tutte" esplicita) sotto
+    stato+ordinamento in `Home.jsx`, stesso componente `PillTabs` della riga
+    di stato — spostata nell'header su richiesta esplicita dell'utente per
+    renderla raggiungibile ovunque, non solo dalla Libreria. Senza spazio
+    per una terza pillola "Tutte" accanto alle due icone, **cliccare
+    l'icona già attiva la disattiva** (torna a "Tutte") invece di avere un
+    bottone dedicato — stesso risultato, gesto diverso. Da una pagina
+    diversa da `/` il click naviga comunque a `/?viewer=...` (nessuno stato
+    attivo da disattivare, quindi solo "attiva"); da `/` preserva gli altri
+    parametri (`status`/`sort`) già in URL. Lettura del filtro
+    (`?viewer=blue|purple`, stesso pattern di fallback su valore
+    sconosciuto/assente di `?status=`/`?sort=`, chiave `VIEWER_KEYS`) resta
+    in `Home.jsx`, che applica il filtro alla griglia — solo la scrittura
+    (i due bottoni) si è spostata. **Filtro stretto**: "solo 💙" mostra
     **solo** le serie marcate `viewer: 'blue'`, non anche quelle condivise
     (scelta esplicita, non "tutto ciò che guardo io incluse le condivise").
     La sezione "Da vedere oggi" in cima a `Home.jsx` **non** è scoped da

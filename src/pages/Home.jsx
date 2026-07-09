@@ -19,15 +19,10 @@ const SORT_KEYS = SORT_OPTIONS.map((o) => o.key)
 // Kept in sync with PillTabs.jsx's own STATUS_TABS keys.
 const STATUS_KEYS = ['all', 'watching', 'planned', 'completed', 'renewed', 'dropped']
 // Strict "mine" filter: a series only shows under 💙/💜 if it's marked solo
-// for that heart (series.viewer) — shared series don't show up under either,
-// only under "Tutte". 💙/💜 reuse the same two emoji used everywhere else
-// for the two people (ViewerPicker, HeartRating), never a new one.
-const VIEWER_TABS = [
-  { key: 'all', label: 'Tutte' },
-  { key: 'blue', label: '💙' },
-  { key: 'purple', label: '💜' },
-]
-const VIEWER_KEYS = VIEWER_TABS.map((o) => o.key)
+// for that heart (series.viewer) — shared series don't show up under either.
+// Written from the header (ViewerHeaderFilter in Header.jsx, reachable from
+// every page), read here the same way status/sort already are.
+const VIEWER_KEYS = ['all', 'blue', 'purple']
 
 function sortSeries(list, sortKey) {
   const sorted = [...list]
@@ -81,15 +76,6 @@ export default function Home() {
     })
   }
 
-  function setViewerFilter(next) {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev)
-      if (next === 'all') params.delete('viewer')
-      else params.set('viewer', next)
-      return params
-    })
-  }
-
   const filtered = useMemo(() => {
     const byStatus = tab === 'all' ? series : series.filter((s) => s.status === tab)
     const byViewer =
@@ -138,10 +124,6 @@ export default function Home() {
             </option>
           ))}
         </select>
-      </div>
-
-      <div className="mt-3">
-        <PillTabs active={viewerFilter} onChange={setViewerFilter} tabs={VIEWER_TABS} />
       </div>
 
       {filtered.length === 0 ? (
